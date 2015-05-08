@@ -1,14 +1,6 @@
 # fold-debounce
 
-TODO: Write description here
-
-## Installation
-
-TODO: Write installation instructions here
-
-## Usage
-
-TODO: Write usage instructions here
+Fold multiple events that happen in a given period of time.
 
 ## How to run tests
 
@@ -16,6 +8,6 @@ TODO: Write usage instructions here
 cabal configure --enable-tests && cabal build && cabal test
 ```
 
-## Contributing
+## Author
 
-TODO: Write contribution instructions here
+Toshio Ito <debug.ito [at] gmail.com>
