@@ -9,6 +9,7 @@ module Control.FoldDebounce (
 
 import Prelude hiding (init)
 import Data.Monoid (Monoid)
+import Data.Default (Default(def))
 
 -- How can we mix mandatory and optional named arguments??
 
@@ -37,14 +38,14 @@ data Settings i o = Settings {
   -- the timer is reset after each event is received.
 }
 
-def :: Settings i o
-def = Settings {
-  cb = undefined,
-  folder = undefined,
-  init = undefined,
-  delay = 1000000,
-  alwaysResetTimer = False
-  }
+instance Default (Settings i o) where
+  def = Settings {
+    cb = undefined,
+    folder = undefined,
+    init = undefined,
+    delay = 1000000,
+    alwaysResetTimer = False
+    }
 
 settings :: (o -> i -> o) -> o -> Settings i o
 settings = undefined
