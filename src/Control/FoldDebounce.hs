@@ -60,11 +60,14 @@ instance Default (Opts i o) where
 
 -- | 'Args' for stacks. Input events are accumulated in a list as if
 -- it were a stack, i.e., the last event is at the head of the list.
-forStack :: Args i [i]
+forStack :: ([i] -> IO ()) -- ^ 'cb' field.
+         -> Args i [i]
 forStack = undefined
 
 -- | 'Args' for monoids. Input events are appended to the tail.
-forMonoid :: Monoid i => Args i i
+forMonoid :: Monoid i
+             => (i -> IO ()) -- ^ 'cb' field.
+             -> Args i i
 forMonoid = undefined
 
 -- | Create a FoldDebounce trigger action.
@@ -78,3 +81,4 @@ new = undefined
 -- | 'new' with default 'Opts'
 new' :: Args i o -> IO (i -> IO ())
 new' a = new a def
+
