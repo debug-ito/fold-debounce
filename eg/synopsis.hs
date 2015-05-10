@@ -5,12 +5,12 @@ import Control.Concurrent (threadDelay)
 
 import qualified Control.FoldDebounce as Fdeb
 
-printCount :: Int -> IO ()
-printCount v = putStrLn ("value = " ++ show v)
+printValue :: Int -> IO ()
+printValue v = putStrLn ("value = " ++ show v)
 
 main :: IO ()
 main = do
-  trigger <- Fdeb.new Fdeb.Args { Fdeb.cb = printCount, Fdeb.fold = (+), Fdeb.init = 0 }
+  trigger <- Fdeb.new Fdeb.Args { Fdeb.cb = printValue, Fdeb.fold = (+), Fdeb.init = 0 }
                       Fdeb.def { Fdeb.delay = 500000 }
   trigger 1
   trigger 2
