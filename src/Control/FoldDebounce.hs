@@ -2,29 +2,43 @@
 -- Module: Control.FoldDebounce
 -- Description: Fold multiple events that happen in a given period of time
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
+--
 -- 
 module Control.FoldDebounce (
-  
+  -- * Create the trigger
+  new,
+  new',
+  -- * Parameter types
+  Args(..),
+  Opts,
+  def,
+  -- ** Accessors for 'Opts'
+  delay,
+  alwaysResetTimer,
+  -- ** Preset parameters
+  forStack,
+  forMonoid
 ) where
 
 import Prelude hiding (init)
 import Data.Monoid (Monoid)
 import Data.Default (Default(def))
 
--- How can we mix mandatory and optional named arguments??
-
-data Settings i o = Settings {
+-- | Mandatory parameters for 'new'.
+data Args i o = Args {
   cb :: o -> IO (),
   -- ^ The callback to be called when the output event is emitted.
-  --
-  -- Default: do nothing
 
-  folder :: o -> i -> o,
+  fold :: o -> i -> o,
   -- ^ The binary operation of left-fold.
 
-  init :: o,
+  init :: o
   -- ^ The initial value of the left-fold.
-  
+}
+
+-- | Optional parameters for 'new'. You can get the default by 'def'
+-- function.
+data Opts i o = Opts {  
   delay :: Int,
   -- ^ The time (in microsecond) to wait after receiving an event
   -- before sending it, in case more events happen in the interim.
@@ -38,25 +52,29 @@ data Settings i o = Settings {
   -- the timer is reset after each event is received.
 }
 
-instance Default (Settings i o) where
-  def = Settings {
-    cb = undefined,
-    folder = undefined,
-    init = undefined,
+instance Default (Opts i o) where
+  def = Opts {
     delay = 1000000,
     alwaysResetTimer = False
     }
 
-settings :: (o -> i -> o) -> o -> Settings i o
-settings = undefined
+-- | 'Args' for stacks. Input events are accumulated in a list as if
+-- it were a stack, i.e., the last event is at the head of the list.
+forStack :: Args i [i]
+forStack = undefined
 
-listSettings :: Settings i [i]
-listSettings = undefined
+-- | 'Args' for monoids. Input events are appended to the tail.
+forMonoid :: Monoid i => Args i i
+forMonoid = undefined
 
-monoidSettings :: Monoid i => Settings i i
-monoidSettings = undefined
-
-new :: Settings i o -> IO (i -> IO())
+-- | Create a FoldDebounce trigger action.
+new :: Args i o -- ^ mandatory parameters
+    -> Opts i o -- ^ optional parameters
+    -> IO (i -> IO()) -- ^ action to get the trigger. You can use the
+                      -- trigger to input an event to the
+                      -- FoldDebounce.
 new = undefined
 
-
+-- | 'new' with default 'Opts'
+new' :: Args i o -> IO (i -> IO ())
+new' a = new a def
