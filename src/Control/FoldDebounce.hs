@@ -7,9 +7,12 @@ module Control.FoldDebounce (
   
 ) where
 
+import Prelude hiding (init)
+import Data.Monoid (Monoid)
+
 -- How can we mix mandatory and optional named arguments??
 
-data Settings i o = Settings i o {
+data Settings i o = Settings {
   cb :: o -> IO (),
   -- ^ The callback to be called when the output event is emitted.
   --
@@ -34,6 +37,15 @@ data Settings i o = Settings i o {
   -- the timer is reset after each event is received.
 }
 
+def :: Settings i o
+def = Settings {
+  cb = undefined,
+  folder = undefined,
+  init = undefined,
+  delay = 1000000,
+  alwaysResetTimer = False
+  }
+
 settings :: (o -> i -> o) -> o -> Settings i o
 settings = undefined
 
@@ -43,7 +55,7 @@ listSettings = undefined
 monoidSettings :: Monoid i => Settings i i
 monoidSettings = undefined
 
-new :: Settings -> IO (a -> IO())
+new :: Settings i o -> IO (i -> IO())
 new = undefined
 
 
