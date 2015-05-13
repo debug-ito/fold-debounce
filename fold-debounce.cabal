@@ -28,7 +28,8 @@ test-suite spec
   ghc-options:          -Wall
   main-is:              Spec.hs
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.2
+                        hspec >=2.1.7 && <2.2,
+                        stm >=2.4.2 && <2.5
 
 source-repository head
   type:                 git
