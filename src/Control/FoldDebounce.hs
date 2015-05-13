@@ -4,43 +4,30 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 -- Synopsis:
--- 
--- > import System.IO (putStrLn)
--- > import Control.Concurrent (threadDelay)
--- > 
--- > import qualified Control.FoldDebounce as Fdeb
--- > 
--- > printValue :: Int -> IO ()
--- > printValue v = putStrLn ("value = " ++ show v)
--- > 
--- > main :: IO ()
--- > main = do
--- >   trigger <- Fdeb.new Fdeb.Args { Fdeb.cb = printValue, Fdeb.fold = (+), Fdeb.init = 0 }
--- >                       Fdeb.def { Fdeb.delay = 500000 }
--- >   trigger 1
--- >   trigger 2
--- >   trigger 3
--- >   threadDelay 1000000 -- During this, "value = 6" is printed.
--- >   trigger 4
--- >   threadDelay 1000    -- Nothing is printed.
--- >   trigger 5
--- >   threadDelay 1000000 -- During this, "value = 9" is printed.
 --
+-- TBW
+-- 
 --
 module Control.FoldDebounce (
   -- * Create the trigger
   new,
   new',
+  Trigger,
   -- * Parameter types
   Args(..),
   Opts,
   def,
   -- ** Accessors for 'Opts'
+  -- $opts_accessors
   delay,
   alwaysResetTimer,
   -- ** Preset parameters
   forStack,
-  forMonoid
+  forMonoid,
+  -- * Use the trigger
+  send,
+  -- * Finish the trigger
+  close
 ) where
 
 import Prelude hiding (init)
@@ -58,6 +45,12 @@ data Args i o = Args {
   init :: o
   -- ^ The initial value of the left-fold.
 }
+
+-- $opts_accessors
+-- You can update fields in 'Opts' via these accessors.
+--
+
+
 
 -- | Optional parameters for 'new'. You can get the default by 'def'
 -- function.
@@ -93,15 +86,23 @@ forMonoid :: Monoid i
              -> Args i i
 forMonoid = undefined
 
--- | Create a FoldDebounce trigger action.
+-- | A trigger to send input events to FoldDebounce.
+data Trigger i
+
+-- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
-    -> IO (i -> IO()) -- ^ action to get the trigger. You can use the
-                      -- trigger to input an event to the
-                      -- FoldDebounce.
+    -> IO (Trigger i) -- ^ action to get the trigger. 
 new = undefined
 
 -- | 'new' with default 'Opts'
-new' :: Args i o -> IO (i -> IO ())
+new' :: Args i o -> IO (Trigger i)
 new' a = new a def
 
+-- | Send an input event.
+send :: Trigger i -> i -> IO ()
+send = undefined
+
+-- | Close and release the 'Trigger'.
+close :: Trigger i -> IO ()
+close = undefined

@@ -1,6 +1,6 @@
 module Control.FoldDebounceSpec (main, spec) where
 
-import Control.Concurrent.Chan (Chan,newChan,writeChan,readChan)
+import Control.Concurrent.Chan (newChan,writeChan,readChan)
 import Test.Hspec
 import qualified Control.FoldDebounce as F
 
@@ -18,5 +18,6 @@ spec = do
     it "emits single output event for single input event" $ do
       output <- newChan
       trig <- F.new (forFIFO $ writeChan output) F.def { F.delay = 5000 }
-      trig 10
+      F.send trig 10
       readChan output `shouldReturn` [10]
+      F.close trig
