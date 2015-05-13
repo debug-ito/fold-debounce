@@ -12,15 +12,24 @@ forFIFO cb = F.Args {
   F.cb = cb, F.fold = (\l v -> l ++ [v]), F.init = []
   }
 
-fifoTrigger :: Chan [Int] -> F.Opts Int [Int] -> IO (F.Trigger Int)
-fifoTrigger output opts = F.new (forFIFO $ writeChan output) opts
+fifoTrigger :: F.Opts Int [Int] -> IO (F.Trigger Int, Chan [Int])
+fifoTrigger opts = do
+  output <- newChan
+  trig <- F.new (forFIFO $ writeChan output) opts
+  return (trig, output)
 
 spec :: Spec
 spec = do
   describe "new" $ do
     it "emits single output event for single input event" $ do
-      output <- newChan
-      trig <- fifoTrigger output F.def { F.delay = 50000 }
+      (trig, output) <- fifoTrigger F.def { F.delay = 50000 }
       F.send trig 10
       readChan output `shouldReturn` [10]
+      F.close trig
+    it "multiple events in a FIFO list" $ do
+      (trig, output) <- fifoTrigger F.def { F.delay = 50000 }
+      F.send trig 10
+      F.send trig 20
+      F.send trig 30
+      readChan output `shouldReturn` [10,20,30]
       F.close trig
