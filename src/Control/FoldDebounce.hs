@@ -87,22 +87,22 @@ forMonoid :: Monoid i
 forMonoid = undefined
 
 -- | A trigger to send input events to FoldDebounce.
-data Trigger i
+data Trigger i o
 
 -- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
-    -> IO (Trigger i) -- ^ action to get the trigger. 
+    -> IO (Trigger i o) -- ^ action to get the trigger. 
 new = undefined
 
 -- | 'new' with default 'Opts'
-new' :: Args i o -> IO (Trigger i)
+new' :: Args i o -> IO (Trigger i o)
 new' a = new a def
 
 -- | Send an input event.
-send :: Trigger i -> i -> IO ()
+send :: Trigger i o -> i -> IO ()
 send = undefined
 
 -- | Close and release the 'Trigger'.
-close :: Trigger i -> IO ()
+close :: Trigger i o -> IO ()
 close = undefined

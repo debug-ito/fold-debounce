@@ -17,7 +17,7 @@ forFIFO cb = F.Args {
 callbackToTChan :: TChan [Int] -> [Int] -> IO ()
 callbackToTChan output = atomically . writeTChan output
 
-fifoTrigger :: F.Opts Int [Int] -> IO (F.Trigger Int, TChan [Int])
+fifoTrigger :: F.Opts Int [Int] -> IO (F.Trigger Int [Int], TChan [Int])
 fifoTrigger opts = do
   output <- atomically $ newTChan
   trig <- F.new (forFIFO $ callbackToTChan output) opts
