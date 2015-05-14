@@ -32,7 +32,13 @@ module Control.FoldDebounce (
 
 import Prelude hiding (init)
 import Data.Monoid (Monoid)
+import Control.Monad (when)
+import Control.Applicative ((<|>), (<$>), (<*>))
+import Control.Concurrent (ThreadId, killThread)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+
 import Data.Default (Default(def))
+import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTVarIO, writeTChan, retry, atomically)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
@@ -87,22 +93,48 @@ forMonoid :: Monoid i
 forMonoid = undefined
 
 -- | A trigger to send input events to FoldDebounce.
-data Trigger i o
+data Trigger i o = Trigger {
+  trigThread :: ThreadId,
+  trigInput :: TChan i,
+  trigAlive :: IORef Bool
+}
 
 -- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
     -> IO (Trigger i o) -- ^ action to get the trigger. 
-new = undefined
+new args opts = uncurry Trigger <$> newThread args opts <*> newIORef True
 
 -- | 'new' with default 'Opts'
 new' :: Args i o -> IO (Trigger i o)
 new' a = new a def
 
+whenAlive :: Trigger i o -> IO () -> IO ()
+whenAlive trig action = readIORef (trigAlive trig) >>= (\alive -> when alive action)
+
 -- | Send an input event.
 send :: Trigger i o -> i -> IO ()
-send = undefined
+send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) in_event
 
 -- | Close and release the 'Trigger'.
 close :: Trigger i o -> IO ()
-close = undefined
+close trig = whenAlive trig $ do
+  killThread (trigThread trig)
+  writeIORef (trigAlive trig) True
+
+---
+
+newThread :: Args i o -> Opts i o -> IO (ThreadId, TChan i)
+newThread args opts = undefined
+
+waitInput :: TChan i      -- ^ input channel
+          -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
+          -> IO (Maybe i) -- ^ 'Nothing' if timed out
+waitInput in_chan mtimeout = do
+  timer <- maybe (newTVarIO False) registerDelay mtimeout
+  atomically $ (Just <$> readTChan in_chan) <|> (checkTimeout timer)
+  where
+    checkTimeout timer = do
+      timed_out <- readTVar timer
+      if timed_out then return Nothing else retry
+    
