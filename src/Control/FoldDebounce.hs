@@ -24,6 +24,7 @@ module Control.FoldDebounce (
   -- ** Preset parameters
   forStack,
   forMonoid,
+  forVoid,
   -- * Use the trigger
   send,
   -- * Finish the trigger
@@ -91,6 +92,11 @@ forMonoid :: Monoid i
              => (i -> IO ()) -- ^ 'cb' field.
              -> Args i i
 forMonoid = undefined
+
+-- | TBW. '()' is a Monoid, by the way.
+forVoid :: IO () -- ^ 'cb' field.
+        -> Args i ()
+forVoid = undefined
 
 -- | A trigger to send input events to FoldDebounce.
 data Trigger i o = Trigger {
