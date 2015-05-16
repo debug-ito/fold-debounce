@@ -83,6 +83,13 @@ spec = do
       F.send trig 20
       threadDelay 200000
       atomically (tryReadTChan output) `shouldReturn` Nothing
+    it "emits a pending output event when closed" $ do
+      (trig, output) <- fifoTrigger F.def { F.delay = 100000 }
+      F.send trig 10
+      F.send trig 20
+      F.send trig 30
+      F.close trig
+      atomically (tryReadTChan output) `shouldReturn` Just [10,20,30]
   describe "forStack" $ do
     it "creates a stacked FoldDebounce" $ do
       output <- atomically $ newTChan

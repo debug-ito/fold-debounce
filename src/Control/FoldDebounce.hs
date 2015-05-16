@@ -122,7 +122,7 @@ whenAlive trig action = readIORef (trigAlive trig) >>= (\alive -> when alive act
 send :: Trigger i o -> i -> IO ()
 send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) in_event
 
--- | Close and release the 'Trigger'.
+-- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
 close :: Trigger i o -> IO ()
 close trig = whenAlive trig $ do
   killThread (trigThread trig)
