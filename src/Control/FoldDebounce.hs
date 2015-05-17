@@ -50,13 +50,12 @@ import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 data Args i o = Args {
   cb :: o -> IO (),
   -- ^ The callback to be called when the output event is emitted.
-  --
   -- The callback should not throw any exception. In this case, the
   -- 'Trigger' is abnormally closed, causing
   -- 'UnexpectedClosedException' when 'close'.
 
   fold :: o -> i -> o,
-  -- ^ The binary operation of left-fold.
+  -- ^ The binary operation of left-fold. The left-hold is evaluated strictly.
 
   init :: o
   -- ^ The initial value of the left-fold.
@@ -104,7 +103,8 @@ forMonoid :: Monoid i
              -> Args i i
 forMonoid = undefined
 
--- | TBW. '()' is a Monoid, by the way.
+-- | 'Args' that discards input events. Although input events are not
+-- folded, they still start the timer and activate the callback.
 forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
 forVoid = undefined

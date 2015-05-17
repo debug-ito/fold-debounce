@@ -135,5 +135,15 @@ spec = do
       atomically (readTChan output) `shouldReturn` ([10,20,30] :: [Int])
       F.close trig
   describe "forVoid" $ do
-    it "needs to be tested" False
+    it "discards input events, but starts the timer" $ do
+      output <- atomically $ newTChan
+      trig <- F.new (F.forVoid $ callbackToTChan output "hoge")
+              F.def { F.delay = 50000 }
+      F.send trig "foo1"
+      F.send trig "foo2"
+      F.send trig "foo3"
+      atomically (readTChan output) `shouldReturn` "hoge"
+      threadDelay 100000
+      atomically (tryReadTChan output) `shouldReturn` Nothing
+      F.close trig
       
