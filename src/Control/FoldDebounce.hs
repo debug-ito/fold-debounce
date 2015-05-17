@@ -35,9 +35,8 @@ module Control.FoldDebounce (
 
 import Prelude hiding (init)
 import Data.Monoid (Monoid)
-import Control.Monad (when)
-import Control.Applicative ((<|>), (<$>), (<*>))
-import Control.Concurrent (ThreadId, killThread, forkFinally)
+import Control.Applicative ((<|>), (<$>))
+import Control.Concurrent (ThreadId, forkFinally)
 import Control.Exception (Exception, SomeException, throwIO)
 import Data.Typeable (Typeable)
 
