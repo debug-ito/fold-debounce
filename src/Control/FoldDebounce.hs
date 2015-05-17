@@ -35,11 +35,11 @@ import Prelude hiding (init)
 import Data.Monoid (Monoid)
 import Control.Monad (when)
 import Control.Applicative ((<|>), (<$>), (<*>))
-import Control.Concurrent (ThreadId, killThread, MVar, newEmptyMVar, isEmptyMVar, readMVar)
+import Control.Concurrent (ThreadId, killThread, forkFinally, MVar, newEmptyMVar, isEmptyMVar, readMVar, putMVar)
 -- import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 
 import Data.Default (Default(def))
-import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTVarIO, writeTChan, retry, atomically)
+import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTChanIO, newTVarIO, writeTChan, retry, atomically)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
@@ -111,7 +111,11 @@ data Trigger i o = Trigger {
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
     -> IO (Trigger i o) -- ^ action to get the trigger. 
-new args opts = uncurry Trigger <$> newThread args opts <*> newEmptyMVar
+new args opts = do
+  chan <- newTChanIO
+  alive_mvar <- newEmptyMVar
+  thread_id <- forkFinally (threadAction args opts chan) (const $ putMVar alive_mvar ())
+  return $ Trigger thread_id chan alive_mvar
 
 -- | 'new' with default 'Opts'
 new' :: Args i o -> IO (Trigger i o)
@@ -132,12 +136,13 @@ close trig = whenAlive trig $ do
 
 ---
 
-newThread :: Args i o -> Opts i o -> IO (ThreadId, TChan (ThreadInput i))
-newThread args opts = undefined
+threadAction :: Args i o -> Opts i o -> TChan (ThreadInput i) -> IO ()
+threadAction args opts in_chan = undefined
 
-waitInput :: TChan i      -- ^ input channel
+
+waitInput :: TChan a      -- ^ input channel
           -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
-          -> IO (Maybe i) -- ^ 'Nothing' if timed out
+          -> IO (Maybe a) -- ^ 'Nothing' if timed out
 waitInput in_chan mtimeout = do
   timer <- maybe (newTVarIO False) registerDelay mtimeout
   atomically $ (Just <$> readTChan in_chan) <|> (checkTimeout timer)
