@@ -61,7 +61,7 @@ spec = do
       atomically (tryReadTChan output) `shouldReturn` Just [10,20,30,40,50]
       F.close trig
     it "emits the output event 'delay' interval after the last input event (alwaysResetTimer = True)" $ do
-      (trig, output) <- fifoTrigger F.def { F.delay = 500000 }
+      (trig, output) <- fifoTrigger F.def { F.delay = 500000, F.alwaysResetTimer = True }
       F.send trig 10
       threadDelay 100000
       F.send trig 20
