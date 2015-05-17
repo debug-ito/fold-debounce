@@ -150,7 +150,7 @@ threadAction args opts in_chan = threadAction' Nothing Nothing where
       Just (TIFinish) -> fireCallback args mout_event
       Just (TIEvent in_event) -> do
         let next_out = doFold args mout_event in_event
-        end_time <- next_out `seq` getCurrentTime
+        end_time <- next_out `seq` getCurrentTime -- not sure about usage of 'seq'
         threadAction' (Just $ nextTimeout opts mtimeout start_time end_time) (Just next_out)
   
 waitInput :: TChan a      -- ^ input channel
@@ -178,4 +178,4 @@ nextTimeout opts morig_timeout start_time end_time
   | otherwise = if raw_result < 0 then 0 else raw_result
   where
     elapsed_usec = round $ (* 1000000) $ toRational $ diffUTCTime end_time start_time
-    raw_result = maybe (delay opts) (`subtract` elapsed_usec) morig_timeout
+    raw_result = maybe (delay opts) (subtract elapsed_usec) morig_timeout
