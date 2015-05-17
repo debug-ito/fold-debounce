@@ -73,6 +73,8 @@ data Opts i o = Opts {
   -- series, a timer is started, and when that timer expires, all
   -- events are sent. If you set this initarg to a true value, then
   -- the timer is reset after each event is received.
+  --
+  -- Default: False
 }
 
 instance Default (Opts i o) where
@@ -149,7 +151,7 @@ threadAction args opts in_chan = threadAction' Nothing Nothing where
       Just (TIEvent in_event) -> do
         let next_out = doFold args mout_event in_event
         end_time <- next_out `seq` getCurrentTime
-        threadAction' (nextTimeout args opts start_time end_time) next_out
+        threadAction' (Just $ nextTimeout opts mtimeout start_time end_time) (Just next_out)
   
 waitInput :: TChan a      -- ^ input channel
           -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
@@ -163,10 +165,17 @@ waitInput in_chan mtimeout = do
       if timed_out then return Nothing else retry
 
 fireCallback :: Args i o -> Maybe o -> IO ()
-fireCallback = undefined
+fireCallback _ Nothing = return ()
+fireCallback args (Just out_event) = cb args out_event
 
-doFold :: Args i o -> Maybe o -> i -> Maybe o
-doFold = undefined
+doFold :: Args i o -> Maybe o -> i -> o
+doFold args mcurrent in_event = let current = maybe (init args) id mcurrent
+                                in fold args current in_event
 
-nextTimeout :: Args i o -> Opts i o -> UTCTime -> UTCTime -> Maybe Int
-nextTimeout = undefined
+nextTimeout :: Opts i o -> Maybe Int -> UTCTime -> UTCTime -> Int
+nextTimeout opts morig_timeout start_time end_time
+  | alwaysResetTimer opts = delay opts
+  | otherwise = if raw_result < 0 then 0 else raw_result
+  where
+    elapsed_usec = round $ (* 1000000) $ toRational $ diffUTCTime end_time start_time
+    raw_result = maybe (delay opts) (`subtract` elapsed_usec) morig_timeout
