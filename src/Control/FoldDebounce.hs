@@ -34,7 +34,7 @@ module Control.FoldDebounce (
 ) where
 
 import Prelude hiding (init)
-import Data.Monoid (Monoid)
+import Data.Monoid (Monoid, mempty, mappend)
 import Control.Applicative ((<|>), (<$>))
 import Control.Concurrent (ThreadId, forkFinally)
 import Control.Exception (Exception, SomeException, throwIO)
@@ -95,19 +95,19 @@ instance Default (Opts i o) where
 -- it were a stack, i.e., the last event is at the head of the list.
 forStack :: ([i] -> IO ()) -- ^ 'cb' field.
          -> Args i [i]
-forStack = undefined
+forStack mycb = Args { cb = mycb, fold = (flip (:)),  init = []}
 
 -- | 'Args' for monoids. Input events are appended to the tail.
 forMonoid :: Monoid i
              => (i -> IO ()) -- ^ 'cb' field.
              -> Args i i
-forMonoid = undefined
+forMonoid mycb = Args { cb = mycb, fold = mappend, init = mempty }
 
 -- | 'Args' that discards input events. Although input events are not
 -- folded, they still start the timer and activate the callback.
 forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
-forVoid = undefined
+forVoid mycb = Args { cb = const mycb, fold = (\_ _ -> ()), init = () }
 
 -- | Internal input to the worker thread.
 data ThreadInput i = TIEvent i -- ^ A new input event is made
