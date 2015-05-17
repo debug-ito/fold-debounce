@@ -15,7 +15,7 @@ forFIFO cb = F.Args {
   F.cb = cb, F.fold = (\l v -> l ++ [v]), F.init = []
   }
 
-callbackToTChan :: TChan [Int] -> [Int] -> IO ()
+callbackToTChan :: TChan a -> a -> IO ()
 callbackToTChan output = atomically . writeTChan output
 
 fifoTrigger :: F.Opts Int [Int] -> IO (F.Trigger Int [Int], TChan [Int])
@@ -102,6 +102,18 @@ spec = do
       F.close trig `shouldThrow` (\e -> case e of
                                      F.UnexpectedClosedException _ -> True
                                      _ -> False)
+    it "folds input events strictly" $ do
+      output <- atomically $ newTChan
+      trig <- F.new F.Args { F.cb = callbackToTChan output, F.fold = (+), F.init = 0 }
+                    F.def { F.delay = 100000 }
+      F.send trig 10
+      F.send trig 20
+      F.send trig undefined
+      threadDelay 200000
+      atomically (tryReadTChan output) `shouldReturn` (Nothing :: Maybe Int)
+      F.close trig `shouldThrow` (\e -> case e of
+                                        F.UnexpectedClosedException _ -> True
+                                        _ -> False)
   describe "forStack" $ do
     it "creates a stacked FoldDebounce" $ do
       output <- atomically $ newTChan
@@ -110,7 +122,7 @@ spec = do
       F.send trig 10
       F.send trig 20
       F.send trig 30
-      atomically (readTChan output) `shouldReturn` [30,20,10]
+      atomically (readTChan output) `shouldReturn` ([30,20,10] :: [Int])
       F.close trig
   describe "forMonoid" $ do
     it "creates a FoldDebounce for Monoids" $ do
@@ -120,7 +132,7 @@ spec = do
       F.send trig [10]
       F.send trig [20]
       F.send trig [30]
-      atomically (readTChan output) `shouldReturn` [10,20,30]
+      atomically (readTChan output) `shouldReturn` ([10,20,30] :: [Int])
       F.close trig
   describe "forVoid" $ do
     it "needs to be tested" False

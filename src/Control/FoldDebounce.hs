@@ -195,8 +195,9 @@ threadAction args opts in_chan = threadAction' Nothing Nothing where
       Just (TIFinish) -> fireCallback args mout_event
       Just (TIEvent in_event) -> do
         let next_out = doFold args mout_event in_event
-        end_time <- next_out `seq` getCurrentTime -- not sure about usage of 'seq'
-        threadAction' (Just $ nextTimeout opts mtimeout start_time end_time) (Just next_out)
+        evaled_next_out <- next_out `seq` return next_out
+        end_time <- getCurrentTime
+        threadAction' (Just $ nextTimeout opts mtimeout start_time end_time) (Just evaled_next_out)
   
 waitInput :: TChan a      -- ^ input channel
           -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
