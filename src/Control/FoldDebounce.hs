@@ -37,12 +37,14 @@ import Prelude hiding (init)
 import Data.Monoid (Monoid)
 import Control.Monad (when)
 import Control.Applicative ((<|>), (<$>), (<*>))
-import Control.Concurrent (ThreadId, killThread, forkFinally, MVar, newEmptyMVar, isEmptyMVar, readMVar, putMVar)
-import Control.Exception (Exception, SomeException)
+import Control.Concurrent (ThreadId, killThread, forkFinally)
+import Control.Exception (Exception, SomeException, throwIO)
 import Data.Typeable (Typeable)
 
 import Data.Default (Default(def))
-import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTChanIO, newTVarIO, writeTChan, retry, atomically)
+import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
+                               TVar, registerDelay, readTVar, writeTVar, newTVarIO,
+                               retry, atomically, throwSTM)
 import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 
 -- | Mandatory parameters for 'new'.
@@ -112,11 +114,16 @@ forVoid = undefined
 data ThreadInput i = TIEvent i -- ^ A new input event is made
                    | TIFinish  -- ^ the caller wants to finish the thread.
 
+-- | Internal state of the worker thread.
+data ThreadState = TSOpen -- ^ the thread is open and running
+                 | TSClosedNormally -- ^ the thread is successfully closed
+                 | TSClosedAbnormally SomeException -- ^ the thread is abnormally closed with the given exception.
+
 -- | A trigger to send input events to FoldDebounce.
 data Trigger i o = Trigger {
   trigThread :: ThreadId,
   trigInput :: TChan (ThreadInput i),
-  trigAlive :: MVar () -- ^ If empty, it's alive.
+  trigState :: TVar ThreadState
 }
 
 -- | Create a FoldDebounce trigger.
@@ -125,16 +132,18 @@ new :: Args i o -- ^ mandatory parameters
     -> IO (Trigger i o) -- ^ action to get the trigger. 
 new args opts = do
   chan <- newTChanIO
-  alive_mvar <- newEmptyMVar
-  thread_id <- forkFinally (threadAction args opts chan) (const $ putMVar alive_mvar ())
-  return $ Trigger thread_id chan alive_mvar
+  state_tvar <- newTVarIO TSOpen
+  let putState = atomically . writeTVar state_tvar
+  thread_id <- forkFinally (threadAction args opts chan)
+                           (either (putState . TSClosedAbnormally) (const $ putState TSClosedNormally))
+  return $ Trigger thread_id chan state_tvar
 
 -- | 'new' with default 'Opts'
 new' :: Args i o -> IO (Trigger i o)
 new' a = new a def
 
-whenAlive :: Trigger i o -> IO () -> IO ()
-whenAlive trig action = isEmptyMVar (trigAlive trig) >>= (\alive -> when alive action)
+getThreadState :: Trigger i o -> IO ThreadState
+getThreadState trig = atomically $ readTVar (trigState trig)
 
 -- | Send an input event.
 --
@@ -142,15 +151,30 @@ whenAlive trig action = isEmptyMVar (trigAlive trig) >>= (\alive -> when alive a
 -- 'AlreadyClosedException'. If the 'Trigger' has been abnormally
 -- closed, it throws 'UnexpectedClosedException'.
 send :: Trigger i o -> i -> IO ()
-send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) (TIEvent in_event)
+send trig in_event = do
+  state <- getThreadState trig
+  case state of
+    TSOpen -> atomically $ writeTChan (trigInput trig) (TIEvent in_event)
+    TSClosedNormally -> throwIO AlreadyClosedException
+    TSClosedAbnormally e -> throwIO $ UnexpectedClosedException e
 
 -- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
 --
 -- If the 'Trigger' has been abnormally closed, it throws 'UnexpectedClosedException'.
 close :: Trigger i o -> IO ()
-close trig = whenAlive trig $ do
-  atomically $ writeTChan (trigInput trig) TIFinish
-  readMVar (trigAlive trig) -- wait for finish
+close trig = do
+  state <- getThreadState trig
+  case state of
+    TSOpen -> do
+      atomically $ writeTChan (trigInput trig) TIFinish
+      atomically $ do
+        cur_state <- readTVar (trigState trig)
+        case cur_state of
+          TSOpen -> retry
+          TSClosedNormally -> return ()
+          TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
+    TSClosedNormally -> return ()
+    TSClosedAbnormally e -> throwIO $ UnexpectedClosedException e
 
 -- | Exception type used by FoldDebounce operations
 data OpException = AlreadyClosedException
