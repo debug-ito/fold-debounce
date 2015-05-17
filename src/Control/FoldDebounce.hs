@@ -36,10 +36,10 @@ import Data.Monoid (Monoid)
 import Control.Monad (when)
 import Control.Applicative ((<|>), (<$>), (<*>))
 import Control.Concurrent (ThreadId, killThread, forkFinally, MVar, newEmptyMVar, isEmptyMVar, readMVar, putMVar)
--- import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 
 import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTChanIO, newTVarIO, writeTChan, retry, atomically)
+import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
@@ -98,7 +98,9 @@ forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
 forVoid = undefined
 
-data ThreadInput i = TIEvent i | TIFinish
+-- | Internal input to the worker thread.
+data ThreadInput i = TIEvent i -- ^ A new input event is made
+                   | TIFinish  -- ^ the caller wants to finish the thread.
 
 -- | A trigger to send input events to FoldDebounce.
 data Trigger i o = Trigger {
@@ -137,9 +139,18 @@ close trig = whenAlive trig $ do
 ---
 
 threadAction :: Args i o -> Opts i o -> TChan (ThreadInput i) -> IO ()
-threadAction args opts in_chan = undefined
-
-
+threadAction args opts in_chan = threadAction' Nothing Nothing where 
+  threadAction' mtimeout mout_event = do
+    start_time <- getCurrentTime
+    mgot <- waitInput in_chan mtimeout
+    case mgot of
+      Nothing -> fireCallback args mout_event >> threadAction' Nothing Nothing
+      Just (TIFinish) -> fireCallback args mout_event
+      Just (TIEvent in_event) -> do
+        let next_out = doFold args mout_event in_event
+        end_time <- next_out `seq` getCurrentTime
+        threadAction' (nextTimeout args opts start_time end_time) next_out
+  
 waitInput :: TChan a      -- ^ input channel
           -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
           -> IO (Maybe a) -- ^ 'Nothing' if timed out
@@ -150,4 +161,12 @@ waitInput in_chan mtimeout = do
     checkTimeout timer = do
       timed_out <- readTVar timer
       if timed_out then return Nothing else retry
-    
+
+fireCallback :: Args i o -> Maybe o -> IO ()
+fireCallback = undefined
+
+doFold :: Args i o -> Maybe o -> i -> Maybe o
+doFold = undefined
+
+nextTimeout :: Args i o -> Opts i o -> UTCTime -> UTCTime -> Maybe Int
+nextTimeout = undefined
