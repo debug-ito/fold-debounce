@@ -35,8 +35,8 @@ import Prelude hiding (init)
 import Data.Monoid (Monoid)
 import Control.Monad (when)
 import Control.Applicative ((<|>), (<$>), (<*>))
-import Control.Concurrent (ThreadId, killThread)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Control.Concurrent (ThreadId, killThread, MVar, newEmptyMVar, isEmptyMVar, readMVar)
+-- import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 
 import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTVarIO, writeTChan, retry, atomically)
@@ -98,39 +98,41 @@ forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
 forVoid = undefined
 
+data ThreadInput i = TIEvent i | TIFinish
+
 -- | A trigger to send input events to FoldDebounce.
 data Trigger i o = Trigger {
   trigThread :: ThreadId,
-  trigInput :: TChan i,
-  trigAlive :: IORef Bool
+  trigInput :: TChan (ThreadInput i),
+  trigAlive :: MVar () -- ^ If empty, it's alive.
 }
 
 -- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
     -> IO (Trigger i o) -- ^ action to get the trigger. 
-new args opts = uncurry Trigger <$> newThread args opts <*> newIORef True
+new args opts = uncurry Trigger <$> newThread args opts <*> newEmptyMVar
 
 -- | 'new' with default 'Opts'
 new' :: Args i o -> IO (Trigger i o)
 new' a = new a def
 
 whenAlive :: Trigger i o -> IO () -> IO ()
-whenAlive trig action = readIORef (trigAlive trig) >>= (\alive -> when alive action)
+whenAlive trig action = isEmptyMVar (trigAlive trig) >>= (\alive -> when alive action)
 
 -- | Send an input event.
 send :: Trigger i o -> i -> IO ()
-send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) in_event
+send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) (TIEvent in_event)
 
 -- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
 close :: Trigger i o -> IO ()
 close trig = whenAlive trig $ do
-  killThread (trigThread trig)
-  writeIORef (trigAlive trig) True
+  atomically $ writeTChan (trigInput trig) TIFinish
+  readMVar (trigAlive trig) -- wait for finish
 
 ---
 
-newThread :: Args i o -> Opts i o -> IO (ThreadId, TChan i)
+newThread :: Args i o -> Opts i o -> IO (ThreadId, TChan (ThreadInput i))
 newThread args opts = undefined
 
 waitInput :: TChan i      -- ^ input channel
