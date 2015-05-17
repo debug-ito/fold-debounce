@@ -28,7 +28,9 @@ module Control.FoldDebounce (
   -- * Use the trigger
   send,
   -- * Finish the trigger
-  close
+  close,
+  -- * Exception types
+  OpException(..)
 ) where
 
 import Prelude hiding (init)
@@ -36,6 +38,8 @@ import Data.Monoid (Monoid)
 import Control.Monad (when)
 import Control.Applicative ((<|>), (<$>), (<*>))
 import Control.Concurrent (ThreadId, killThread, forkFinally, MVar, newEmptyMVar, isEmptyMVar, readMVar, putMVar)
+import Control.Exception (Exception, SomeException)
+import Data.Typeable (Typeable)
 
 import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, registerDelay, readTVar, readTChan, newTChanIO, newTVarIO, writeTChan, retry, atomically)
@@ -45,6 +49,10 @@ import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 data Args i o = Args {
   cb :: o -> IO (),
   -- ^ The callback to be called when the output event is emitted.
+  --
+  -- The callback should not throw any exception. In this case, the
+  -- 'Trigger' is abnormally closed, causing
+  -- 'UnexpectedClosedException' when 'close'.
 
   fold :: o -> i -> o,
   -- ^ The binary operation of left-fold.
@@ -129,14 +137,27 @@ whenAlive :: Trigger i o -> IO () -> IO ()
 whenAlive trig action = isEmptyMVar (trigAlive trig) >>= (\alive -> when alive action)
 
 -- | Send an input event.
+--
+-- If the 'Trigger' is already closed, it throws
+-- 'AlreadyClosedException'. If the 'Trigger' has been abnormally
+-- closed, it throws 'UnexpectedClosedException'.
 send :: Trigger i o -> i -> IO ()
 send trig in_event = whenAlive trig $ atomically $ writeTChan (trigInput trig) (TIEvent in_event)
 
 -- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
+--
+-- If the 'Trigger' has been abnormally closed, it throws 'UnexpectedClosedException'.
 close :: Trigger i o -> IO ()
 close trig = whenAlive trig $ do
   atomically $ writeTChan (trigInput trig) TIFinish
   readMVar (trigAlive trig) -- wait for finish
+
+-- | Exception type used by FoldDebounce operations
+data OpException = AlreadyClosedException
+                 | UnexpectedClosedException SomeException
+                 deriving (Show, Typeable)
+
+instance Exception OpException
 
 ---
 

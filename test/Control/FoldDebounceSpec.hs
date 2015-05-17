@@ -1,8 +1,9 @@
 module Control.FoldDebounceSpec (main, spec) where
 
+import Control.Concurrent (threadDelay)
+
 import Control.Monad.STM (atomically)
 import Control.Concurrent.STM.TChan (TChan,newTChan,writeTChan,readTChan,tryPeekTChan,tryReadTChan)
-import Control.Concurrent (threadDelay)
 import Test.Hspec
 import qualified Control.FoldDebounce as F
 
@@ -75,14 +76,14 @@ spec = do
       atomically (tryReadTChan output) `shouldReturn` Nothing
       threadDelay 400000
       atomically (tryReadTChan output) `shouldReturn` Just [10,20,30,40,50]
-    it "does nothing after closed" $ do
+    it "throws AlreadyClosedException after closed" $ do
       (trig, output) <- fifoTrigger F.def { F.delay = 10000 }
       F.send trig 10
       atomically (readTChan output) `shouldReturn` [10]
       F.close trig
-      F.send trig 20
-      threadDelay 200000
-      atomically (tryReadTChan output) `shouldReturn` Nothing
+      F.send trig 20 `shouldThrow` (\e -> case e of
+                                       F.AlreadyClosedException -> True
+                                       _ -> False)
     it "emits a pending output event when closed" $ do
       (trig, output) <- fifoTrigger F.def { F.delay = 100000 }
       F.send trig 10
@@ -90,6 +91,17 @@ spec = do
       F.send trig 30
       F.close trig
       atomically (tryReadTChan output) `shouldReturn` Just [10,20,30]
+    it "is ok to close after close" $ do
+      (trig, _) <- fifoTrigger F.def { F.delay = 20000 }
+      F.close trig
+      F.close trig
+    it "throws UnexpectedClosedException when close after the thread abnormally dies" $ do
+      trig <- F.new F.Args { F.cb = error "Boom!", F.fold = (++), F.init = ""} F.def { F.delay = 10000 }
+      F.send trig "hogehoge"
+      threadDelay 50000
+      F.close trig `shouldThrow` (\e -> case e of
+                                     F.UnexpectedClosedException _ -> True
+                                     _ -> False)
   describe "forStack" $ do
     it "creates a stacked FoldDebounce" $ do
       output <- atomically $ newTChan
@@ -110,4 +122,6 @@ spec = do
       F.send trig [30]
       atomically (readTChan output) `shouldReturn` [10,20,30]
       F.close trig
+  describe "forVoid" $ do
+    it "needs to be tested" False
       

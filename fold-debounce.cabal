@@ -17,6 +17,7 @@ library
   hs-source-dirs:       src
   ghc-options:          -Wall
   exposed-modules:      Control.FoldDebounce
+  default-extensions:   DeriveDataTypeable
   -- other-modules:
   build-depends:        base >= 4.6.0 && < 4.7,
                         data-default >=0.5.3 && <0.6,
