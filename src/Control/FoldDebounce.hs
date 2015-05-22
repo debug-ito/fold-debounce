@@ -44,8 +44,13 @@
 -- input event. This module just starts a timer at the first input,
 -- and runs the callback when the timer expires.
 --
+-- __IMPORTANT NOTE__: currently you have to add @-threaded@ option to
+-- ghc linker to use this module. I'm not sure if you can use it with
+-- other compilers.
+--
 -- The API and documentation is borrowed from a Perl module called
 -- AnyEvent::Debounce. See <https://metacpan.org/pod/AnyEvent::Debounce>
+--
 --
 module Control.FoldDebounce (
   -- * Create the trigger
