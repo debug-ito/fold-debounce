@@ -31,6 +31,7 @@ test-suite spec
   hs-source-dirs:       test
   ghc-options:          -Wall -threaded
   main-is:              Spec.hs
+  other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
                         hspec >=2.1.7 && <2.2,
                         stm
