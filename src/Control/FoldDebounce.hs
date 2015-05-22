@@ -11,7 +11,6 @@
 module Control.FoldDebounce (
   -- * Create the trigger
   new,
-  new',
   Trigger,
   -- * Parameter types
   Args(..),
@@ -35,8 +34,9 @@ module Control.FoldDebounce (
 
 import Prelude hiding (init)
 import Data.Monoid (Monoid, mempty, mappend)
+import Control.Monad (void)
 import Control.Applicative ((<|>), (<$>))
-import Control.Concurrent (ThreadId, forkFinally)
+import Control.Concurrent (forkFinally)
 import Control.Exception (Exception, SomeException)
 import Data.Typeable (Typeable)
 
@@ -48,17 +48,17 @@ import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
-  cb :: o -> IO (),
-  -- ^ The callback to be called when the output event is emitted.
+  -- | The callback to be called when the output event is emitted.
   -- The callback should not throw any exception. In this case, the
   -- 'Trigger' is abnormally closed, causing
   -- 'UnexpectedClosedException' when 'close'.
+  cb :: o -> IO (),
 
+  -- | The binary operation of left-fold. The left-hold is evaluated strictly.
   fold :: o -> i -> o,
-  -- ^ The binary operation of left-fold. The left-hold is evaluated strictly.
 
+  -- | The initial value of the left-fold.
   init :: o
-  -- ^ The initial value of the left-fold.
 }
 
 -- $opts_accessors
@@ -70,19 +70,19 @@ data Args i o = Args {
 -- | Optional parameters for 'new'. You can get the default by 'def'
 -- function.
 data Opts i o = Opts {  
-  delay :: Int,
-  -- ^ The time (in microsecond) to wait after receiving an event
+  -- | The time (in microsecond) to wait after receiving an event
   -- before sending it, in case more events happen in the interim.
   --
   -- Default: 1 second (1000000)
+  delay :: Int,
   
-  alwaysResetTimer :: Bool
-  -- ^ Normally, when an event is received and it's the first of a
+  -- | Normally, when an event is received and it's the first of a
   -- series, a timer is started, and when that timer expires, all
-  -- events are sent. If you set this initarg to a true value, then
+  -- events are sent. If you set this parameter to a true value, then
   -- the timer is reset after each event is received.
   --
   -- Default: False
+  alwaysResetTimer :: Bool
 }
 
 instance Default (Opts i o) where
@@ -91,8 +91,8 @@ instance Default (Opts i o) where
     alwaysResetTimer = False
     }
 
--- | 'Args' for stacks. Input events are accumulated in a list as if
--- it were a stack, i.e., the last event is at the head of the list.
+-- | 'Args' for stacks. Input events are accumulated in a stack, i.e.,
+-- the last event is at the head of the list.
 forStack :: ([i] -> IO ()) -- ^ 'cb' field.
          -> Args i [i]
 forStack mycb = Args { cb = mycb, fold = (flip (:)),  init = []}
@@ -118,9 +118,9 @@ data ThreadState = TSOpen -- ^ the thread is open and running
                  | TSClosedNormally -- ^ the thread is successfully closed
                  | TSClosedAbnormally SomeException -- ^ the thread is abnormally closed with the given exception.
 
--- | A trigger to send input events to FoldDebounce.
+-- | A trigger to send input events to FoldDebounce. You input data of
+-- type 'i' to the trigger, and it outputs data of type 'o'.
 data Trigger i o = Trigger {
-  trigThread :: ThreadId,
   trigInput :: TChan (ThreadInput i),
   trigState :: TVar ThreadState
 }
@@ -128,18 +128,14 @@ data Trigger i o = Trigger {
 -- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
-    -> IO (Trigger i o) -- ^ action to get the trigger. 
+    -> IO (Trigger i o) -- ^ action to create the trigger. 
 new args opts = do
   chan <- newTChanIO
   state_tvar <- newTVarIO TSOpen
   let putState = atomically . writeTVar state_tvar
-  thread_id <- forkFinally (threadAction args opts chan)
-                           (either (putState . TSClosedAbnormally) (const $ putState TSClosedNormally))
-  return $ Trigger thread_id chan state_tvar
-
--- | 'new' with default 'Opts'
-new' :: Args i o -> IO (Trigger i o)
-new' a = new a def
+  void $ forkFinally (threadAction args opts chan)
+                     (either (putState . TSClosedAbnormally) (const $ putState TSClosedNormally))
+  return $ Trigger chan state_tvar
 
 getThreadState :: Trigger i o -> STM ThreadState
 getThreadState trig = readTVar (trigState trig)
@@ -173,8 +169,8 @@ close trig = do
         TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
 
 -- | Exception type used by FoldDebounce operations
-data OpException = AlreadyClosedException
-                 | UnexpectedClosedException SomeException
+data OpException = AlreadyClosedException -- ^ You attempted to 'send' after the trigger is already 'close'd.
+                 | UnexpectedClosedException SomeException -- ^ The 'SomeException' is thrown in the background thread.
                  deriving (Show, Typeable)
 
 instance Exception OpException
