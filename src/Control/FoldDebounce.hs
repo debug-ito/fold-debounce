@@ -4,9 +4,48 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 -- Synopsis:
---
--- TBW
 -- 
+-- > module Main (main) where
+-- > 
+-- > import System.IO (putStrLn)
+-- > import Control.Concurrent (threadDelay)
+-- > 
+-- > import qualified Control.FoldDebounce as Fdeb
+-- > 
+-- > printValue :: Int -> IO ()
+-- > printValue v = putStrLn ("value = " ++ show v)
+-- > 
+-- > main :: IO ()
+-- > main = do
+-- >   trigger <- Fdeb.new Fdeb.Args { Fdeb.cb = printValue, Fdeb.fold = (+), Fdeb.init = 0 }
+-- >                       Fdeb.def { Fdeb.delay = 500000 }
+-- >   let send' = Fdeb.send trigger
+-- >   send' 1
+-- >   send' 2
+-- >   send' 3
+-- >   threadDelay 1000000 -- During this period, "value = 6" is printed.
+-- >   send' 4
+-- >   threadDelay 1000    -- Nothing is printed.
+-- >   send' 5
+-- >   threadDelay 1000000 -- During this period, "value = 9" is printed.
+-- >   Fdeb.close trigger
+-- 
+-- This module is similar to "Control.Debounce". It debouces input
+-- events and regulates the frequency at which the action (callback)
+-- is executed.
+--
+-- The difference from "Control.Debounce" is:
+--
+-- * With "Control.Debounce", you cannot pass values to the callback
+-- action. This module folds (accumulates) the input events (type @i@)
+-- and passes the folded output event (type @o@) to the callback.
+-- 
+-- * "Control.Debounce" immediately runs the callback at the first
+-- input event. This module just starts a timer at the first input,
+-- and runs the callback when the timer expires.
+--
+-- The API and documentation is borrowed from a Perl module called
+-- AnyEvent::Debounce. See <https://metacpan.org/pod/AnyEvent::Debounce>
 --
 module Control.FoldDebounce (
   -- * Create the trigger
@@ -48,13 +87,16 @@ import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
-  -- | The callback to be called when the output event is emitted.
+  -- | The callback to be called when the output event is
+  -- emitted. Note that this action is run in a different thread than
+  -- the one calling 'send'.
+  -- 
   -- The callback should not throw any exception. In this case, the
   -- 'Trigger' is abnormally closed, causing
   -- 'UnexpectedClosedException' when 'close'.
   cb :: o -> IO (),
 
-  -- | The binary operation of left-fold. The left-hold is evaluated strictly.
+  -- | The binary operation of left-fold. The left-fold is evaluated strictly.
   fold :: o -> i -> o,
 
   -- | The initial value of the left-fold.
@@ -78,7 +120,7 @@ data Opts i o = Opts {
   
   -- | Normally, when an event is received and it's the first of a
   -- series, a timer is started, and when that timer expires, all
-  -- events are sent. If you set this parameter to a true value, then
+  -- events are sent. If you set this parameter to True, then
   -- the timer is reset after each event is received.
   --
   -- Default: False
@@ -119,7 +161,7 @@ data ThreadState = TSOpen -- ^ the thread is open and running
                  | TSClosedAbnormally SomeException -- ^ the thread is abnormally closed with the given exception.
 
 -- | A trigger to send input events to FoldDebounce. You input data of
--- type 'i' to the trigger, and it outputs data of type 'o'.
+-- type @i@ to the trigger, and it outputs data of type @o@.
 data Trigger i o = Trigger {
   trigInput :: TChan (ThreadInput i),
   trigState :: TVar ThreadState

@@ -16,10 +16,10 @@ main = do
   send' 1
   send' 2
   send' 3
-  threadDelay 1000000 -- During this, "value = 6" is printed.
+  threadDelay 1000000 -- During this period, "value = 6" is printed.
   send' 4
   threadDelay 1000    -- Nothing is printed.
   send' 5
-  threadDelay 1000000 -- During this, "value = 9" is printed.
+  threadDelay 1000000 -- During this period, "value = 9" is printed.
   Fdeb.close trigger
   

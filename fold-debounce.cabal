@@ -5,7 +5,7 @@ maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
 license-file:           LICENSE
 synopsis:               Fold multiple events that happen in a given period of time.
-description:            TBW
+description:            Fold multiple events that happen in a given period of time. See "Control.FoldDebounce".
 category:               Control
 cabal-version:          >= 1.10
 build-type:             Simple
