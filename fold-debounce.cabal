@@ -34,7 +34,8 @@ test-suite spec
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
                         hspec >=2.1.7 && <2.2,
-                        stm
+                        stm,
+                        time
 
 source-repository head
   type:                 git

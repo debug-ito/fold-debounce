@@ -1,8 +1,11 @@
 module Control.FoldDebounceSpec (main, spec) where
 
+import Data.Ratio ((%))
 import Control.Concurrent (threadDelay)
+import Control.Applicative ((<$>))
 
-import Control.Monad.STM (atomically)
+import Data.Time (getCurrentTime, addUTCTime)
+import Control.Monad.STM (atomically, STM)
 import Control.Concurrent.STM.TChan (TChan,newTChan,writeTChan,readTChan,tryPeekTChan,tryReadTChan)
 import Test.Hspec
 import qualified Control.FoldDebounce as F
@@ -23,6 +26,19 @@ fifoTrigger opts = do
   output <- atomically $ newTChan
   trig <- F.new (forFIFO $ callbackToTChan output) opts
   return (trig, output)
+
+repeatFor :: Integer -> IO () -> IO ()
+repeatFor duration_usec action = repeatUntil =<< (addUTCTime (fromRational (duration_usec % 1000000)) <$> getCurrentTime)
+  where
+    repeatUntil goal_time = do
+      action
+      cur_time <- getCurrentTime
+      if cur_time > goal_time then return () else repeatUntil goal_time
+
+readAllTChan :: TChan a -> STM [a]
+readAllTChan chan = reverse <$> readAllTChan' []
+  where
+    readAllTChan' cur_ret = maybe (return cur_ret) (\val -> readAllTChan' (val : cur_ret)) =<< tryReadTChan chan
 
 spec :: Spec
 spec = do
@@ -114,6 +130,14 @@ spec = do
       F.close trig `shouldThrow` (\e -> case e of
                                         F.UnexpectedClosedException _ -> True
                                         _ -> False)
+    it "emits output events even if input events are coming intensely" $ do
+      output <- atomically $ newTChan
+      trig <- F.new F.Args { F.cb = callbackToTChan output, F.fold = (\_ i -> i), F.init = "" }
+                    F.def { F.delay = 500 }
+      repeatFor 2000 $ F.send trig "abc"
+      F.close trig
+      output_events <- atomically $ readAllTChan output
+      output_events `shouldSatisfy` ((> 1) . length)
   describe "forStack" $ do
     it "creates a stacked FoldDebounce" $ do
       output <- atomically $ newTChan
