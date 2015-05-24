@@ -137,7 +137,7 @@ spec = do
       repeatFor 2000 $ F.send trig "abc"
       F.close trig
       output_events <- atomically $ readAllTChan output
-      output_events `shouldSatisfy` ((> 1) . length)
+      output_events `shouldSatisfy` ((> 2) . length)
   describe "forStack" $ do
     it "creates a stacked FoldDebounce" $ do
       output <- atomically $ newTChan
