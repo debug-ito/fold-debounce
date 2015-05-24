@@ -167,8 +167,11 @@ forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
 forVoid mycb = Args { cb = const mycb, fold = (\_ _ -> ()), init = () }
 
+type SendTime = UTCTime
+type ExpirationTime = UTCTime
+
 -- | Internal input to the worker thread.
-data ThreadInput i = TIEvent i -- ^ A new input event is made
+data ThreadInput i = TIEvent i SendTime -- ^ A new input event is made
                    | TIFinish  -- ^ the caller wants to finish the thread.
 
 -- | Internal state of the worker thread.
@@ -204,12 +207,14 @@ getThreadState trig = readTVar (trigState trig)
 -- 'AlreadyClosedException'. If the 'Trigger' has been abnormally
 -- closed, it throws 'UnexpectedClosedException'.
 send :: Trigger i o -> i -> IO ()
-send trig in_event = atomically $ do
-  state <- getThreadState trig
-  case state of
-    TSOpen -> writeTChan (trigInput trig) (TIEvent in_event)
-    TSClosedNormally -> throwSTM AlreadyClosedException
-    TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
+send trig in_event = do
+  send_time <- getCurrentTime
+  atomically $ do
+    state <- getThreadState trig
+    case state of
+      TSOpen -> writeTChan (trigInput trig) (TIEvent in_event send_time)
+      TSClosedNormally -> throwSTM AlreadyClosedException
+      TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
 
 -- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
 --
@@ -237,26 +242,27 @@ instance Exception OpException
 
 threadAction :: Args i o -> Opts i o -> TChan (ThreadInput i) -> IO ()
 threadAction args opts in_chan = threadAction' Nothing Nothing where 
-  threadAction' mtimeout mout_event = do
-    start_time <- getCurrentTime
-    mgot <- waitInput in_chan mtimeout
+  threadAction' mexpiration mout_event = do
+    mgot <- waitInput in_chan mexpiration
     case mgot of
       Nothing -> fireCallback args mout_event >> threadAction' Nothing Nothing
       Just (TIFinish) -> fireCallback args mout_event
-      Just (TIEvent in_event) -> do
+      Just (TIEvent in_event send_time) ->
         let next_out = doFold args mout_event in_event
-        evaled_next_out <- next_out `seq` return next_out
-        next_timeout <- nextTimeout opts mtimeout start_time <$> getCurrentTime
-        if next_timeout == 0
-          then fireCallback args (Just evaled_next_out) >> threadAction' Nothing Nothing
-          else threadAction' (Just next_timeout) (Just evaled_next_out)
+            next_expiration = nextExpiration opts mexpiration send_time
+        in next_out `seq` threadAction' (Just next_expiration) (Just next_out)
   
 waitInput :: TChan a      -- ^ input channel
-          -> Maybe Int    -- ^ timeout in microseconds. If 'Nothing', it never times out.
+          -> Maybe ExpirationTime  -- ^ If 'Nothing', it never times out.
           -> IO (Maybe a) -- ^ 'Nothing' if timed out
-waitInput in_chan mtimeout = do
-  timer <- maybe (newTVarIO False) registerDelay mtimeout
-  atomically $ (Just <$> readTChan in_chan) <|> (checkTimeout timer)
+waitInput in_chan mexpiration = do
+  cur_time <- getCurrentTime
+  let mwait_duration = diffTimeUsec cur_time <$> mexpiration
+  case mwait_duration of
+    Just 0 -> return Nothing
+    _ -> do
+      timer <- maybe (newTVarIO False) registerDelay mwait_duration
+      atomically $ (Just <$> readTChan in_chan) <|> (checkTimeout timer)
   where
     checkTimeout timer = do
       timed_out <- readTVar timer
@@ -270,10 +276,25 @@ doFold :: Args i o -> Maybe o -> i -> o
 doFold args mcurrent in_event = let current = maybe (init args) id mcurrent
                                 in fold args current in_event
 
-nextTimeout :: Opts i o -> Maybe Int -> UTCTime -> UTCTime -> Int
-nextTimeout opts morig_timeout start_time end_time
-  | alwaysResetTimer opts = delay opts
-  | otherwise = if raw_result < 0 then 0 else raw_result
+noNegative :: Int -> Int
+noNegative x = if x < 0 then 0 else x
+
+diffTimeUsec :: UTCTime -> UTCTime -> Int
+diffTimeUsec a b = noNegative $ round $ (* 1000000) $ toRational $ diffUTCTime a b
+
+addTimeUsec :: UTCTime -> Int -> UTCTime
+addTimeUsec t d = undefined
+
+nextExpiration :: Opts i o -> Maybe ExpirationTime -> SendTime -> ExpirationTime
+nextExpiration opts mlast_expiration send_time
+  | alwaysResetTimer opts = fullDelayed
+  | otherwise = maybe fullDelayed id $ mlast_expiration
   where
-    elapsed_usec = round $ (* 1000000) $ toRational $ diffUTCTime end_time start_time
-    raw_result = maybe (delay opts) (subtract elapsed_usec) morig_timeout
+    fullDelayed = (`addTimeUsec` delay opts) send_time
+
+-- nextTimeout :: Opts i o -> Maybe Int -> UTCTime -> UTCTime -> Int
+-- nextTimeout opts morig_timeout start_time end_time
+--   | alwaysResetTimer opts = delay opts
+--   | otherwise = noNegative $ maybe (delay opts) (subtract elapsed_usec) morig_timeout
+--   where
+--     elapsed_usec = diffTimeUsec end_time start_time
