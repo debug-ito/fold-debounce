@@ -258,7 +258,7 @@ waitInput :: TChan a      -- ^ input channel
           -> IO (Maybe a) -- ^ 'Nothing' if timed out
 waitInput in_chan mexpiration = do
   cur_time <- getCurrentTime
-  let mwait_duration = diffTimeUsec cur_time <$> mexpiration
+  let mwait_duration = (`diffTimeUsec` cur_time) <$> mexpiration
   case mwait_duration of
     Just 0 -> return Nothing
     _ -> do
