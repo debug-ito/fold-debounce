@@ -78,6 +78,7 @@ module Control.FoldDebounce (
 ) where
 
 import Prelude hiding (init)
+import Data.Ratio ((%))
 import Data.Monoid (Monoid, mempty, mappend)
 import Control.Monad (void)
 import Control.Applicative ((<|>), (<$>))
@@ -89,7 +90,7 @@ import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
                                TVar, registerDelay, readTVar, writeTVar, newTVarIO,
                                STM, retry, atomically, throwSTM)
-import Data.Time (getCurrentTime, diffUTCTime, UTCTime)
+import Data.Time (getCurrentTime, diffUTCTime, UTCTime, addUTCTime)
 
 -- | Mandatory parameters for 'new'.
 data Args i o = Args {
@@ -283,7 +284,7 @@ diffTimeUsec :: UTCTime -> UTCTime -> Int
 diffTimeUsec a b = noNegative $ round $ (* 1000000) $ toRational $ diffUTCTime a b
 
 addTimeUsec :: UTCTime -> Int -> UTCTime
-addTimeUsec t d = undefined
+addTimeUsec t d = addUTCTime (fromRational (fromIntegral d % 1000000)) t
 
 nextExpiration :: Opts i o -> Maybe ExpirationTime -> SendTime -> ExpirationTime
 nextExpiration opts mlast_expiration send_time
