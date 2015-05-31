@@ -64,7 +64,6 @@ module Control.FoldDebounce (
   -- $opts_accessors
   delay,
   alwaysResetTimer,
-  realTimeFold,
   -- ** Preset parameters
   forStack,
   forMonoid,
@@ -82,7 +81,7 @@ import Data.Ratio ((%))
 import Data.Monoid (Monoid, mempty, mappend)
 import Control.Monad (void)
 import Control.Applicative ((<|>), (<$>))
-import Control.Concurrent (forkFinally, rtsSupportsBoundThreads)
+import Control.Concurrent (forkFinally)
 import Control.Exception (Exception, SomeException)
 import Data.Typeable (Typeable)
 
@@ -131,23 +130,14 @@ data Opts i o = Opts {
   -- the timer is reset after each event is received.
   --
   -- Default: False
-  alwaysResetTimer :: Bool,
+  alwaysResetTimer :: Bool
 
-  -- | Usually you don't have to set this option. If set to True,
-  -- input events are folded as soon as you send them. If set to
-  -- False, input events are stored in a queue until the timer
-  -- expires. The latter strategy consumes more memory and causes
-  -- surge of CPU demand.
-  --
-  -- Default: 'rtsSupportsBoundThreads' from "Control.Concurrent"
-  realTimeFold :: Bool
 }
 
 instance Default (Opts i o) where
   def = Opts {
     delay = 1000000,
-    alwaysResetTimer = False,
-    realTimeFold = rtsSupportsBoundThreads
+    alwaysResetTimer = False
     }
 
 -- | 'Args' for stacks. Input events are accumulated in a stack, i.e.,
