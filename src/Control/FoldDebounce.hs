@@ -2,7 +2,7 @@
 -- Module: Control.FoldDebounce
 -- Description: Fold multiple events that happen in a given period of time
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
--- 
+--
 -- Synopsis:
 -- 
 -- > module Main (main) where
@@ -43,10 +43,6 @@
 -- * "Control.Debounce" immediately runs the callback at the first
 -- input event. This module just starts a timer at the first input,
 -- and runs the callback when the timer expires.
---
--- __IMPORTANT NOTE__: currently you have to add @-threaded@ option to
--- ghc linker to use this module. I'm not sure if you can use it with
--- other compilers.
 --
 -- The API and documentation is borrowed from a Perl module called
 -- AnyEvent::Debounce. See <https://metacpan.org/pod/AnyEvent::Debounce>
