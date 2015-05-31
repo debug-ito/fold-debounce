@@ -88,7 +88,7 @@ import Data.Typeable (Typeable)
 import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
                                TVar, readTVar, writeTVar, newTVarIO,
-                               STM, retry, atomically, throwSTM, check)
+                               STM, retry, atomically, throwSTM)
 import Control.Concurrent.STM.Delay (newDelay, cancelDelay, waitDelay)
 import Data.Time (getCurrentTime, diffUTCTime, UTCTime, addUTCTime)
 
@@ -253,8 +253,8 @@ waitInput in_chan mexpiration = do
   case mwait_duration of
     Just 0 -> return Nothing
     Nothing -> atomically readInputSTM
-    Just dur -> bracket (newDelay dur) cancelDelay $ \delay -> do
-      atomically $ readInputSTM <|> (const Nothing <$> waitDelay delay)
+    Just dur -> bracket (newDelay dur) cancelDelay $ \timer -> do
+      atomically $ readInputSTM <|> (const Nothing <$> waitDelay timer)
   where
     readInputSTM = Just <$> readTChan in_chan
 
