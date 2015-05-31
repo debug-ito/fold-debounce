@@ -82,13 +82,14 @@ import Data.Monoid (Monoid, mempty, mappend)
 import Control.Monad (void)
 import Control.Applicative ((<|>), (<$>))
 import Control.Concurrent (forkFinally)
-import Control.Exception (Exception, SomeException)
+import Control.Exception (Exception, SomeException, bracket)
 import Data.Typeable (Typeable)
 
 import Data.Default (Default(def))
 import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
-                               TVar, registerDelay, readTVar, writeTVar, newTVarIO,
-                               STM, retry, atomically, throwSTM)
+                               TVar, readTVar, writeTVar, newTVarIO,
+                               STM, retry, atomically, throwSTM, check)
+import Control.Concurrent.STM.Delay (newDelay, cancelDelay, waitDelay)
 import Data.Time (getCurrentTime, diffUTCTime, UTCTime, addUTCTime)
 
 -- | Mandatory parameters for 'new'.
@@ -251,13 +252,11 @@ waitInput in_chan mexpiration = do
   let mwait_duration = (`diffTimeUsec` cur_time) <$> mexpiration
   case mwait_duration of
     Just 0 -> return Nothing
-    _ -> do
-      timer <- maybe (newTVarIO False) registerDelay mwait_duration
-      atomically $ (Just <$> readTChan in_chan) <|> (checkTimeout timer)
+    Nothing -> atomically readInputSTM
+    Just dur -> bracket (newDelay dur) cancelDelay $ \delay -> do
+      atomically $ readInputSTM <|> (const Nothing <$> waitDelay delay)
   where
-    checkTimeout timer = do
-      timed_out <- readTVar timer
-      if timed_out then return Nothing else retry
+    readInputSTM = Just <$> readTChan in_chan
 
 fireCallback :: Args i o -> Maybe o -> IO ()
 fireCallback _ Nothing = return ()
@@ -283,9 +282,3 @@ nextExpiration opts mlast_expiration send_time
   where
     fullDelayed = (`addTimeUsec` delay opts) send_time
 
--- nextTimeout :: Opts i o -> Maybe Int -> UTCTime -> UTCTime -> Int
--- nextTimeout opts morig_timeout start_time end_time
---   | alwaysResetTimer opts = delay opts
---   | otherwise = noNegative $ maybe (delay opts) (subtract elapsed_usec) morig_timeout
---   where
---     elapsed_usec = diffTimeUsec end_time start_time
