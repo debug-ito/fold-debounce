@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Main (main) where
 
 import Control.Applicative ((<$>))
@@ -5,31 +6,34 @@ import Control.Monad (void)
 
 import qualified Control.FoldDebounce as F
 import Data.Conduit (Source, Sink, await, yield, ($$))
-import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate, release, liftResourceT, resourceForkIO)
+import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, MonadBaseControl, allocate, release, liftResourceT, resourceForkIO, runResourceT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (liftIO)
 import Control.Concurrent.STM (TChan, newTChanIO, writeTChan, readTChan, atomically)
 
+main :: IO ()
 main = undefined
 
-debounceSource :: (MonadResource mi, Monad mo) => F.Opts i o -> (o -> i -> o) -> o -> Source mi i -> mi (Source mo o)
+debounceSource :: (MonadResource m, MonadBaseControl IO m) => F.Opts i o -> (o -> i -> o) -> o -> Source m i -> Source m o
 debounceSource opts f acc src = do
-  out_chan <- lift $ newTChanIO
+  out_chan <- liftIO $ newTChanIO
   (key_trig, trig) <- allocate (F.new F.Args { F.cb = atomically . writeTChan out_chan . Just,
                                         F.fold = f, F.init = acc }
                                 opts)
                                F.close
   let retSource = do
-        mgot <- lift $ atomically $ readTChan out_chan
+        mgot <- liftIO $ atomically $ readTChan out_chan
         case mgot of
           Nothing -> return ()
           Just got -> yield got >> retSource
-  void $ liftResourceT $ resourceForkIO $ lift (src $$ trigSink trig key_trig out_chan)
-  return retSource
+  void $ lift $ runResourceT $ resourceForkIO $ lift (src $$ trigSink trig key_trig out_chan)
+  retSource
 
 -- (src $$ ...) :: (MonadResource mi) => mi ()
 -- lift (src $$ .. ) :: (MonadResource mi) => t mi ()
 -- resourceForkIO :: (MonadBaseControl IO m) => ResourceT m () -> ResourceT m ThreadId
+-- liftResourceT :: (MonadResource m) => ResourceT IO a -> m a 
+-- runResourceT :: MonadBaseControl IO m => ResourceT m a -> m a
 --
 -- MonadBaseControl IO の制約が満たせないかも。追加すればいいか。
 -- 
