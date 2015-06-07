@@ -1,4 +1,4 @@
-module Data.Conduit.DebounceSpec (main, spec) where
+module Data.Conduit.FoldDebounceSpec (main, spec) where
 
 import Test.Hspec
 
