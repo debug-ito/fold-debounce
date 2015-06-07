@@ -10,6 +10,8 @@ category:               Conduit
 cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md
+homepage:               https://github.com/debug-ito/fold-debounce
+bug-reports:            https://github.com/debug-ito/fold-debounce/issues
 
 library
   default-language:     Haskell2010
@@ -39,4 +41,4 @@ test-suite spec
 
 source-repository head
   type:                 git
---  location:             
+  location:             https://github.com/debug-ito/fold-debounce.git
