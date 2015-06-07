@@ -13,12 +13,24 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Concurrent.STM (newTChanIO, writeTChan, readTChan, atomically)
 
+import Control.Concurrent (threadDelay)
+import qualified Data.Conduit.List as CL
+
+ticker :: Int -> Int -> Source IO Int
+ticker delay_ms maximum = ticker' 0 where
+  ticker' count = if count >= maximum then return () else do
+    yield count
+    liftIO $ threadDelay (delay_ms * 1000)
+    ticker' (count + 1)
+
 main :: IO ()
-main = undefined
+main = do
+  let deb = debounceSource (F.forStack $ const $ return ()) F.def {F.delay = 5000000}
+  (deb $ ticker 1000 20) $$ CL.mapM_ print
 
 debounceSource :: (MonadThrow m, MonadBase IO m, MonadIO m, Applicative m, MonadBaseControl IO m)
-               => F.Opts i o -> (o -> i -> o) -> o -> Source m i -> Source m o
-debounceSource opts f acc src = do
+               => F.Args i o -> F.Opts i o -> Source m i -> Source m o
+debounceSource args opts src = do
   out_chan <- liftIO $ newTChanIO
   let retSource = do
         mgot <- liftIO $ atomically $ readTChan out_chan
@@ -26,10 +38,9 @@ debounceSource opts f acc src = do
           Nothing -> return ()
           Just got -> yield got >> retSource
   lift $ runResourceT $ do
-    (_, trig) <- allocate (F.new F.Args { F.cb = atomically . writeTChan out_chan . Just,
-                                                 F.fold = f, F.init = acc }
-                                        opts)
-                                 (F.close)
+    (_, trig) <- allocate (F.new args { F.cb = atomically . writeTChan out_chan . Just }
+                                 opts)
+                          (F.close)
     void $ register $ atomically $ writeTChan out_chan Nothing
     void $ resourceForkIO $ lift (src $$ trigSink trig)
   retSource
