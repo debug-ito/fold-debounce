@@ -58,7 +58,7 @@ spec = do
     it "waits for more events that follow the first event" $ do
       (trig, output) <- fifoTrigger F.def { F.delay = 500000 }
       F.send trig 10
-      threadDelay 30000
+      threadDelay 200000
       atomically (tryReadTChan output) `shouldReturn` Nothing
       threadDelay 500000
       atomically (tryReadTChan output) `shouldReturn` Just [10]
