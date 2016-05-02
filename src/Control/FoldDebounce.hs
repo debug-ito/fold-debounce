@@ -81,7 +81,7 @@ import Control.Concurrent (forkFinally)
 import Control.Exception (Exception, SomeException, bracket)
 import Data.Typeable (Typeable)
 
-import Data.Default (Default(def))
+import Data.Default.Class (Default(def))
 import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
                                TVar, readTVar, writeTVar, newTVarIO,
                                STM, retry, atomically, throwSTM)
