@@ -23,7 +23,7 @@ library
   build-depends:        base >= 4.6.0 && < 4.9,
                         data-default-class >=0.0.1,
                         stm >=2.4.2 && <2.5,
-                        time >=1.4.0 && <1.6,
+                        time >=1.4.0 && <1.7,
                         stm-delay >=0.1.1 && <0.2
 
 test-suite spec
@@ -34,7 +34,7 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.2,
+                        hspec >=2.1.7 && <2.3,
                         stm,
                         time
 
@@ -46,7 +46,7 @@ test-suite spec-threaded
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.2,
+                        hspec >=2.1.7 && <2.3,
                         stm,
                         time
 
