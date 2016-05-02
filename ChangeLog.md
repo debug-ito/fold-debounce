@@ -1,5 +1,12 @@
 # Revision history for fold-debounce
 
+## 0.2.0.1  -- 2016-05-02
+
+* Loosen dependency on `data-default` to `data-default-class`.
+* Supports `time-1.6` and `hspec-2.2.3`.
+* Fix test error in Mac OS X.
+
+
 ## 0.2.0.0  -- 2015-06-01
 
 * The debounce period now starts from the time when the first input
