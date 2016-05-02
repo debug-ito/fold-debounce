@@ -6,7 +6,7 @@ import Control.Applicative ((<$>))
 
 import Data.Time (getCurrentTime, addUTCTime)
 import Control.Monad.STM (atomically, STM)
-import Control.Concurrent.STM.TChan (TChan,newTChan,writeTChan,readTChan,tryPeekTChan,tryReadTChan)
+import Control.Concurrent.STM.TChan (TChan,newTChan,writeTChan,readTChan,tryReadTChan)
 import Test.Hspec
 import qualified Control.FoldDebounce as F
 
@@ -59,7 +59,7 @@ spec = do
       (trig, output) <- fifoTrigger F.def { F.delay = 500000 }
       F.send trig 10
       threadDelay 30000
-      atomically (tryPeekTChan output) `shouldReturn` Nothing
+      atomically (tryReadTChan output) `shouldReturn` Nothing
       threadDelay 500000
       atomically (tryReadTChan output) `shouldReturn` Just [10]
       F.close trig
