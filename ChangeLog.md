@@ -1,5 +1,10 @@
 # Revision history for fold-debounce
 
+## 0.2.0.2  -- 2016-05-22
+
+* Confirmed build with `data-default-class-0.1.0` and `base-4.9.0.0`.
+
+
 ## 0.2.0.1  -- 2016-05-02
 
 * Loosen dependency on `data-default` to `data-default-class`.
