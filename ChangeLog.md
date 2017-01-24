@@ -1,5 +1,10 @@
 # Revision history for fold-debounce
 
+## 0.2.0.5  -- 2017-01-24
+
+* Confirmed test with `hspec-2.4.0`.
+
+
 ## 0.2.0.4  -- 2016-11-27
 
 * Confirmed test with `time-1.7`.
