@@ -34,7 +34,7 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.4,
+                        hspec >=2.1.7 && <2.5,
                         stm,
                         time
 
@@ -46,7 +46,7 @@ test-suite spec-threaded
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.4,
+                        hspec >=2.1.7 && <2.5,
                         stm,
                         time
 
