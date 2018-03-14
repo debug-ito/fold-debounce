@@ -1,5 +1,5 @@
 name:                   fold-debounce
-version:                0.2.0.6
+version:                0.2.0.7
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -34,7 +34,7 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-depends:        base, fold-debounce,
-                        hspec >=2.1.7 && <2.5,
+                        hspec >=2.1.7,
                         stm,
                         time
 

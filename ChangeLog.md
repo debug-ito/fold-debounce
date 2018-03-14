@@ -1,5 +1,11 @@
 # Revision history for fold-debounce
 
+## 0.2.0.7  -- 2018-03-14
+
+* Confirmed test with `hspec-2.5.0`.
+  Remove its dependency upper bound, because I think it's stable enough.
+
+
 ## 0.2.0.6  -- 2017-07-21
 
 * Confirmed test with `time-1.8`.
