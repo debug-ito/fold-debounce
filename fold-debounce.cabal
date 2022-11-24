@@ -23,7 +23,7 @@ library
   build-depends:        base >= 4.6.0 && <5.0,
                         data-default-class >=0.0.1 && <0.2,
                         stm >=2.4.2 && <2.6,
-                        time >=1.4.0 && <1.10,
+                        time >=1.4.0 && <1.12,
                         stm-delay >=0.1.1 && <0.2
 
 test-suite spec
@@ -33,6 +33,7 @@ test-suite spec
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
+  build-tool-depends:   hspec-discover:hspec-discover
   build-depends:        base, fold-debounce,
                         hspec >=2.1.7,
                         stm,
@@ -45,6 +46,7 @@ test-suite spec-threaded
   ghc-options:          -Wall -threaded -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
+  build-tool-depends:   hspec-discover:hspec-discover
   build-depends:        base, fold-debounce,
                         hspec,
                         stm,
