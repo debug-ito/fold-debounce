@@ -9,3 +9,7 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 .stack-work
+.ghc.environment*
+cabal.project.freeze
+cabal.project.local
+dist-newstyle
