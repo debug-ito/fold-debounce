@@ -1,14 +1,17 @@
-module Control.FoldDebounceSpec (main, spec) where
+module Control.FoldDebounceSpec
+    ( main
+    , spec
+    ) where
 
-import Data.Ratio ((%))
-import Control.Concurrent (threadDelay)
-import Control.Applicative ((<$>))
+import           Control.Applicative          ((<$>))
+import           Control.Concurrent           (threadDelay)
+import           Data.Ratio                   ((%))
 
-import Data.Time (getCurrentTime, addUTCTime)
-import Control.Monad.STM (atomically, STM)
-import Control.Concurrent.STM.TChan (TChan,newTChan,writeTChan,readTChan,tryReadTChan)
-import Test.Hspec
-import qualified Control.FoldDebounce as F
+import           Control.Concurrent.STM.TChan (TChan, newTChan, readTChan, tryReadTChan, writeTChan)
+import qualified Control.FoldDebounce         as F
+import           Control.Monad.STM            (STM, atomically)
+import           Data.Time                    (addUTCTime, getCurrentTime)
+import           Test.Hspec
 
 main :: IO ()
 main = hspec spec
@@ -99,7 +102,7 @@ spec = do
       F.close trig
       F.send trig 20 `shouldThrow` (\e -> case e of
                                        F.AlreadyClosedException -> True
-                                       _ -> False)
+                                       _                        -> False)
     it "emits a pending output event when closed" $ do
       (trig, output) <- fifoTrigger F.def { F.delay = 100000 }
       F.send trig 10
@@ -117,7 +120,7 @@ spec = do
       threadDelay 50000
       F.close trig `shouldThrow` (\e -> case e of
                                      F.UnexpectedClosedException _ -> True
-                                     _ -> False)
+                                     _                             -> False)
     it "folds input events strictly" $ do
       output <- atomically $ newTChan
       trig <- F.new F.Args { F.cb = callbackToTChan output, F.fold = (+), F.init = 0 }
@@ -129,7 +132,7 @@ spec = do
       atomically (tryReadTChan output) `shouldReturn` (Nothing :: Maybe Int)
       F.close trig `shouldThrow` (\e -> case e of
                                         F.UnexpectedClosedException _ -> True
-                                        _ -> False)
+                                        _                             -> False)
     it "emits output events even if input events are coming intensely" $ do
       output <- atomically $ newTChan
       trig <- F.new F.Args { F.cb = callbackToTChan output, F.fold = (\_ i -> i), F.init = "" }
@@ -170,4 +173,4 @@ spec = do
       threadDelay 100000
       atomically (tryReadTChan output) `shouldReturn` Nothing
       F.close trig
-      
+

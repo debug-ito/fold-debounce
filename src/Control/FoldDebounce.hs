@@ -4,17 +4,17 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- Synopsis:
--- 
+--
 -- > module Main (main) where
--- > 
+-- >
 -- > import System.IO (putStrLn)
 -- > import Control.Concurrent (threadDelay)
--- > 
+-- >
 -- > import qualified Control.FoldDebounce as Fdeb
--- > 
+-- >
 -- > printValue :: Int -> IO ()
 -- > printValue v = putStrLn ("value = " ++ show v)
--- > 
+-- >
 -- > main :: IO ()
 -- > main = do
 -- >   trigger <- Fdeb.new Fdeb.Args { Fdeb.cb = printValue, Fdeb.fold = (+), Fdeb.init = 0 }
@@ -29,7 +29,7 @@
 -- >   send' 5
 -- >   threadDelay 1000000 -- During this period, "value = 9" is printed.
 -- >   Fdeb.close trigger
--- 
+--
 -- This module is similar to "Control.Debounce". It debouces input
 -- events and regulates the frequency at which the action (callback)
 -- is executed.
@@ -39,7 +39,7 @@
 -- * With "Control.Debounce", you cannot pass values to the callback
 -- action. This module folds (accumulates) the input events (type @i@)
 -- and passes the folded output event (type @o@) to the callback.
--- 
+--
 -- * "Control.Debounce" immediately runs the callback at the first
 -- input event. This module just starts a timer at the first input,
 -- and runs the callback when the timer expires.
@@ -48,63 +48,62 @@
 -- AnyEvent::Debounce. See <https://metacpan.org/pod/AnyEvent::Debounce>
 --
 --
-module Control.FoldDebounce (
-  -- * Create the trigger
-  new,
-  Trigger,
-  -- * Parameter types
-  Args(..),
-  Opts,
-  def,
-  -- ** Accessors for 'Opts'
-  -- $opts_accessors
-  delay,
-  alwaysResetTimer,
-  -- ** Preset parameters
-  forStack,
-  forMonoid,
-  forVoid,
-  -- * Use the trigger
-  send,
-  -- * Finish the trigger
-  close,
-  -- * Exception types
-  OpException(..)
-) where
+module Control.FoldDebounce
+    ( -- * Create the trigger
+      new
+    , Trigger
+      -- * Parameter types
+    , Args (..)
+    , Opts
+    , def
+      -- ** Accessors for 'Opts'
+      -- $opts_accessors
+    , delay
+    , alwaysResetTimer
+      -- ** Preset parameters
+    , forStack
+    , forMonoid
+    , forVoid
+      -- * Use the trigger
+    , send
+      -- * Finish the trigger
+    , close
+      -- * Exception types
+    , OpException (..)
+    ) where
 
-import Prelude hiding (init)
-import Data.Ratio ((%))
-import Data.Monoid (Monoid, mempty, mappend)
-import Control.Monad (void)
-import Control.Applicative ((<|>), (<$>))
-import Control.Concurrent (forkFinally)
-import Control.Exception (Exception, SomeException, bracket)
-import Data.Typeable (Typeable)
+import           Control.Applicative          ((<$>), (<|>))
+import           Control.Concurrent           (forkFinally)
+import           Control.Exception            (Exception, SomeException, bracket)
+import           Control.Monad                (void)
+import           Data.Monoid                  (Monoid, mappend, mempty)
+import           Data.Ratio                   ((%))
+import           Data.Typeable                (Typeable)
+import           Prelude                      hiding (init)
 
-import Data.Default.Class (Default(def))
-import Control.Concurrent.STM (TChan, readTChan, newTChanIO, writeTChan,
-                               TVar, readTVar, writeTVar, newTVarIO,
-                               STM, retry, atomically, throwSTM)
-import Control.Concurrent.STM.Delay (newDelay, cancelDelay, waitDelay)
-import Data.Time (getCurrentTime, diffUTCTime, UTCTime, addUTCTime)
+import           Control.Concurrent.STM       (STM, TChan, TVar, atomically, newTChanIO, newTVarIO,
+                                               readTChan, readTVar, retry, throwSTM, writeTChan,
+                                               writeTVar)
+import           Control.Concurrent.STM.Delay (cancelDelay, newDelay, waitDelay)
+import           Data.Default.Class           (Default (def))
+import           Data.Time                    (UTCTime, addUTCTime, diffUTCTime, getCurrentTime)
 
 -- | Mandatory parameters for 'new'.
-data Args i o = Args {
-  -- | The callback to be called when the output event is
-  -- emitted. Note that this action is run in a different thread than
-  -- the one calling 'send'.
-  -- 
-  -- The callback should not throw any exception. In this case, the
-  -- 'Trigger' is abnormally closed, causing
-  -- 'UnexpectedClosedException' when 'close'.
-  cb :: o -> IO (),
-
-  -- | The binary operation of left-fold. The left-fold is evaluated strictly.
-  fold :: o -> i -> o,
-
-  -- | The initial value of the left-fold.
-  init :: o
-}
+data Args i o
+  = Args
+      { -- | The callback to be called when the output event is
+        -- emitted. Note that this action is run in a different thread than
+        -- the one calling 'send'.
+        --
+        -- The callback should not throw any exception. In this case, the
+        -- 'Trigger' is abnormally closed, causing
+        -- 'UnexpectedClosedException' when 'close'.
+        cb   :: o -> IO ()
+        -- | The binary operation of left-fold. The left-fold is evaluated strictly.
+      , fold :: o -> i -> o
+        -- | The initial value of the left-fold.
+      , init :: o
+      }
 
 -- $opts_accessors
 -- You can update fields in 'Opts' via these accessors.
@@ -114,22 +113,21 @@ data Args i o = Args {
 
 -- | Optional parameters for 'new'. You can get the default by 'def'
 -- function.
-data Opts i o = Opts {  
-  -- | The time (in microsecond) to wait after receiving an event
-  -- before sending it, in case more events happen in the interim.
-  --
-  -- Default: 1 second (1000000)
-  delay :: Int,
-  
-  -- | Normally, when an event is received and it's the first of a
-  -- series, a timer is started, and when that timer expires, all
-  -- events are sent. If you set this parameter to True, then
-  -- the timer is reset after each event is received.
-  --
-  -- Default: False
-  alwaysResetTimer :: Bool
-
-}
+data Opts i o
+  = Opts
+      { -- | The time (in microsecond) to wait after receiving an event
+        -- before sending it, in case more events happen in the interim.
+        --
+        -- Default: 1 second (1000000)
+        delay            :: Int
+        -- | Normally, when an event is received and it's the first of a
+        -- series, a timer is started, and when that timer expires, all
+        -- events are sent. If you set this parameter to True, then
+        -- the timer is reset after each event is received.
+        --
+        -- Default: False
+      , alwaysResetTimer :: Bool
+      }
 
 instance Default (Opts i o) where
   def = Opts {
@@ -159,25 +157,28 @@ type SendTime = UTCTime
 type ExpirationTime = UTCTime
 
 -- | Internal input to the worker thread.
-data ThreadInput i = TIEvent i SendTime -- ^ A new input event is made
-                   | TIFinish  -- ^ the caller wants to finish the thread.
+data ThreadInput i
+  = TIEvent i SendTime -- ^ A new input event is made
+  | TIFinish
 
 -- | Internal state of the worker thread.
-data ThreadState = TSOpen -- ^ the thread is open and running
-                 | TSClosedNormally -- ^ the thread is successfully closed
-                 | TSClosedAbnormally SomeException -- ^ the thread is abnormally closed with the given exception.
+data ThreadState
+  = TSOpen -- ^ the thread is open and running
+  | TSClosedNormally -- ^ the thread is successfully closed
+  | TSClosedAbnormally SomeException
 
 -- | A trigger to send input events to FoldDebounce. You input data of
 -- type @i@ to the trigger, and it outputs data of type @o@.
-data Trigger i o = Trigger {
-  trigInput :: TChan (ThreadInput i),
-  trigState :: TVar ThreadState
-}
+data Trigger i o
+  = Trigger
+      { trigInput :: TChan (ThreadInput i)
+      , trigState :: TVar ThreadState
+      }
 
 -- | Create a FoldDebounce trigger.
 new :: Args i o -- ^ mandatory parameters
     -> Opts i o -- ^ optional parameters
-    -> IO (Trigger i o) -- ^ action to create the trigger. 
+    -> IO (Trigger i o) -- ^ action to create the trigger.
 new args opts = do
   chan <- newTChanIO
   state_tvar <- newTVarIO TSOpen
@@ -200,8 +201,8 @@ send trig in_event = do
   atomically $ do
     state <- getThreadState trig
     case state of
-      TSOpen -> writeTChan (trigInput trig) (TIEvent in_event send_time)
-      TSClosedNormally -> throwSTM AlreadyClosedException
+      TSOpen               -> writeTChan (trigInput trig) (TIEvent in_event send_time)
+      TSClosedNormally     -> throwSTM AlreadyClosedException
       TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
 
 -- | Close and release the 'Trigger'. If there is a pending output event, the event is fired immediately.
@@ -215,21 +216,22 @@ close trig = do
     whenOpen stm_action = do
       state <- getThreadState trig
       case state of
-        TSOpen -> stm_action
-        TSClosedNormally -> return ()
+        TSOpen               -> stm_action
+        TSClosedNormally     -> return ()
         TSClosedAbnormally e -> throwSTM $ UnexpectedClosedException e
 
 -- | Exception type used by FoldDebounce operations
-data OpException = AlreadyClosedException -- ^ You attempted to 'send' after the trigger is already 'close'd.
-                 | UnexpectedClosedException SomeException -- ^ The 'SomeException' is thrown in the background thread.
-                 deriving (Show, Typeable)
+data OpException
+  = AlreadyClosedException -- ^ You attempted to 'send' after the trigger is already 'close'd.
+  | UnexpectedClosedException SomeException -- ^ The 'SomeException' is thrown in the background thread.
+  deriving (Show, Typeable)
 
 instance Exception OpException
 
 ---
 
 threadAction :: Args i o -> Opts i o -> TChan (ThreadInput i) -> IO ()
-threadAction args opts in_chan = threadAction' Nothing Nothing where 
+threadAction args opts in_chan = threadAction' Nothing Nothing where
   threadAction' mexpiration mout_event = do
     mgot <- waitInput in_chan mexpiration
     case mgot of
@@ -239,7 +241,7 @@ threadAction args opts in_chan = threadAction' Nothing Nothing where
         let next_out = doFold args mout_event in_event
             next_expiration = nextExpiration opts mexpiration send_time
         in next_out `seq` threadAction' (Just next_expiration) (Just next_out)
-  
+
 waitInput :: TChan a      -- ^ input channel
           -> Maybe ExpirationTime  -- ^ If 'Nothing', it never times out.
           -> IO (Maybe a) -- ^ 'Nothing' if timed out
@@ -255,7 +257,7 @@ waitInput in_chan mexpiration = do
     readInputSTM = Just <$> readTChan in_chan
 
 fireCallback :: Args i o -> Maybe o -> IO ()
-fireCallback _ Nothing = return ()
+fireCallback _ Nothing             = return ()
 fireCallback args (Just out_event) = cb args out_event
 
 doFold :: Args i o -> Maybe o -> i -> o
