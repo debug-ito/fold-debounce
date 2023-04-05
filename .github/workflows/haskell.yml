@@ -6,7 +6,7 @@ jobs:
   cabal:
     strategy:
       matrix:
-##         fail-fast: false
+        fail-fast: false
         os: [ubuntu-latest, macOS-latest]
         plan:
           - ghc: latest
