@@ -1,5 +1,9 @@
 # Revision history for fold-debounce
 
+## 0.2.0.11  -- 2023-04-05
+
+* Confirmed test with `ghc-9.4.4` and `time-1.12`.
+
 ## 0.2.0.10  -- 2022-11-24
 
 * Confirmed test with `ghc-9.2.5` and `time-1.11`.
