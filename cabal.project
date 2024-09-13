@@ -2,3 +2,6 @@ write-ghc-environment-files: ghc8.4.4+
 packages: .
 
 allow-newer: all
+constraints: filepath <1.5
+-- ^ The above constraint is necessary to cancel the effect of "allow-newer" on filepath.
+-- 'unix' package (without "os-string" flag) has the above constraint, which is necessary to make a valid build plan.
