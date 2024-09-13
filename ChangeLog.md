@@ -1,5 +1,10 @@
 # Revision history for fold-debounce
 
+## 0.2.0.12  -- 2024-09-13
+
+* Update dependency version bounds with cabal-plan-bounds.
+  This adds support for new packages, while drops support for some old ones.
+
 ## 0.2.0.11  -- 2023-04-05
 
 * Confirmed test with `ghc-9.4.4` and `time-1.12`.
