@@ -1,2 +1,4 @@
 write-ghc-environment-files: ghc8.4.4+
 packages: .
+
+allow-newer: all
