@@ -20,11 +20,11 @@ library
   exposed-modules:      Control.FoldDebounce
   default-extensions:   DeriveDataTypeable
   -- other-modules:
-  build-depends:        base >= 4.6.0 && <5.0,
-                        data-default-class >=0.0.1 && <0.2,
-                        stm >=2.4.2 && <2.6,
-                        time >=1.4.0 && <1.13,
-                        stm-delay >=0.1.1 && <0.2
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0,
+                        data-default-class ^>=0.1.2,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2,
+                        stm-delay ^>=0.1.1
 
 test-suite spec
   type:                 exitcode-stdio-1.0
@@ -34,10 +34,11 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-tool-depends:   hspec-discover:hspec-discover
-  build-depends:        base, fold-debounce,
-                        hspec >=2.1.7,
-                        stm,
-                        time
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0,
+                        fold-debounce,
+                        hspec ^>=2.10.6 || ^>=2.11.9,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2
 
 test-suite spec-threaded
   type:                 exitcode-stdio-1.0
@@ -47,10 +48,11 @@ test-suite spec-threaded
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-tool-depends:   hspec-discover:hspec-discover
-  build-depends:        base, fold-debounce,
-                        hspec,
-                        stm,
-                        time
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0,
+                        fold-debounce,
+                        hspec ^>=2.10.6 || ^>=2.11.9,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2
 
 source-repository head
   type:                 git
