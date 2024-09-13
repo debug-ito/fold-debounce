@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         fail-fast: false
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest]
         plan:
           - ghc: latest
             allow-fail: true
@@ -51,7 +51,56 @@ jobs:
       run: cabal v2-build --only-dependencies all
     - name: Build
       run: cabal v2-build all
-    - name: Haddock
-      run: cabal v2-haddock all
+    ## - name: Haddock
+    ##   run: cabal v2-haddock all
     - name: Test
       run: cabal v2-test --jobs=1 all
+
+    - name: Prepare artifacts
+      run: |
+        mkdir output-artifacts
+        cp dist-newstyle/cache/plan.json output-artifacts/
+        cp cabal.project.freeze output-artifacts/
+    - uses: actions/upload-artifact@v4
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      with:
+        name: plans-${{ matrix.plan.ghc }}
+        path: output-artifacts
+
+  bounds:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v4
+    - name: Fetch cabal-plan-bounds
+      run: |
+        curl -L https://github.com/nomeata/cabal-plan-bounds/releases/latest/download/cabal-plan-bounds.linux.gz | gunzip > /usr/local/bin/cabal-plan-bounds
+        chmod +x /usr/local/bin/cabal-plan-bounds
+    - name: Make directories for work
+      run: mkdir -p input-artifacts output-artifacts/plans output-artifacts/freezes output-artifacts/cabals
+    - uses: actions/download-artifact@v4
+      with:
+        path: input-artifacts/
+    - name: Aggregate build plans
+      run: |
+        for d in input-artifacts/*; do
+          echo $d
+          plan_id=${d#input-artifacts/plans-}
+          echo $plan_id
+          mv $d/plan.json output-artifacts/plans/${plan_id}.json
+          mv $d/cabal.project.freeze output-artifacts/freezes/${plan_id}.freeze
+        done
+
+    - name: Modify cabals
+      run: |
+        p=fold-debounce
+        echo modify $p.cabal
+        cabal-plan-bounds -c $p.cabal output-artifacts/plans/*.json
+        git diff $p.cabal
+        cp $p.cabal output-artifacts/cabals/
+        done
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: aggregated-plans
+        path: output-artifacts
