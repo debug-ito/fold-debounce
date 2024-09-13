@@ -3,7 +3,7 @@ name: Haskell CI
 on: [push, pull_request]
 
 jobs:
-  cabal:
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest]
