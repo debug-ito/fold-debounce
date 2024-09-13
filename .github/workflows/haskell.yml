@@ -100,7 +100,6 @@ jobs:
         cabal-plan-bounds -c $p.cabal output-artifacts/plans/*.json
         git diff $p.cabal
         cp $p.cabal output-artifacts/cabals/
-        done
 
     - uses: actions/upload-artifact@v4
       with:
