@@ -1,5 +1,11 @@
 # Revision history for fold-debounce
 
+## 0.2.0.13  -- 2024-10-31
+
+* Now it depends on `data-default` instead of `data-default-class`.
+  This is because `data-default-0.8` now includes and deprecates `data-default-class`.
+  See also: https://github.com/commercialhaskell/stackage/issues/7545
+
 ## 0.2.0.12  -- 2024-09-13
 
 * Update dependency version bounds with cabal-plan-bounds.
