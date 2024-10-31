@@ -85,7 +85,7 @@ import           Control.Concurrent.STM       (STM, TChan, TVar, atomically, new
                                                readTChan, readTVar, retry, throwSTM, writeTChan,
                                                writeTVar)
 import           Control.Concurrent.STM.Delay (cancelDelay, newDelay, waitDelay)
-import           Data.Default.Class           (Default (def))
+import           Data.Default                 (Default (def))
 import           Data.Time                    (UTCTime, addUTCTime, diffUTCTime, getCurrentTime)
 
 -- | Mandatory parameters for 'new'.
