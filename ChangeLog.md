@@ -1,5 +1,9 @@
 # Revision history for fold-debounce
 
+## 0.2.0.14  -- 2024-11-01
+
+* Remove broken links to `Control.Debounce` module. (#3)
+
 ## 0.2.0.13  -- 2024-10-31
 
 * Now it depends on `data-default` instead of `data-default-class`.
