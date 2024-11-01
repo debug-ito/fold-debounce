@@ -30,17 +30,17 @@
 -- >   threadDelay 1000000 -- During this period, "value = 9" is printed.
 -- >   Fdeb.close trigger
 --
--- This module is similar to "Control.Debounce". It debouces input
--- events and regulates the frequency at which the action (callback)
+-- This module is similar to Control.Debounce module in [auto-update package](https://hackage.haskell.org/package/auto-update).
+-- It debouces input events and regulates the frequency at which the action (callback)
 -- is executed.
 --
--- The difference from "Control.Debounce" is:
+-- The difference from Control.Debounce is:
 --
--- * With "Control.Debounce", you cannot pass values to the callback
+-- * With Control.Debounce, you cannot pass values to the callback
 -- action. This module folds (accumulates) the input events (type @i@)
 -- and passes the folded output event (type @o@) to the callback.
 --
--- * "Control.Debounce" immediately runs the callback at the first
+-- * Control.Debounce immediately runs the callback at the first
 -- input event. This module just starts a timer at the first input,
 -- and runs the callback when the timer expires.
 --
