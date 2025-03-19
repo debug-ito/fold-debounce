@@ -1,5 +1,9 @@
 # Revision history for fold-debounce
 
+## 0.2.0.15  -- 2025-03-19
+
+* Confirm test with `ghc-9.12.1`.
+
 ## 0.2.0.14  -- 2024-11-01
 
 * Remove broken links to `Control.Debounce` module. (#3)
