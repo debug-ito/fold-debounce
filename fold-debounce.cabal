@@ -20,11 +20,11 @@ library
   exposed-modules:      Control.FoldDebounce
   default-extensions:   DeriveDataTypeable
   -- other-modules:
-  build-depends:        base,
-                        data-default,
-                        stm,
-                        time,
-                        stm-delay
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0 || ^>=4.21.0,
+                        data-default ^>=0.7.1 || ^>=0.8.0,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2 || ^>=1.14,
+                        stm-delay ^>=0.1.1
 
 test-suite spec
   type:                 exitcode-stdio-1.0
@@ -34,11 +34,11 @@ test-suite spec
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-tool-depends:   hspec-discover:hspec-discover
-  build-depends:        base,
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0 || ^>=4.21.0,
                         fold-debounce,
-                        hspec,
-                        stm,
-                        time
+                        hspec ^>=2.10.6 || ^>=2.11.9,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2 || ^>=1.14
 
 test-suite spec-threaded
   type:                 exitcode-stdio-1.0
@@ -48,11 +48,11 @@ test-suite spec-threaded
   main-is:              Spec.hs
   other-modules:        Control.FoldDebounceSpec
   build-tool-depends:   hspec-discover:hspec-discover
-  build-depends:        base,
+  build-depends:        base ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0 || ^>=4.17.0 || ^>=4.18.0 || ^>=4.19.0 || ^>=4.20.0 || ^>=4.21.0,
                         fold-debounce,
-                        hspec,
-                        stm,
-                        time
+                        hspec ^>=2.10.6 || ^>=2.11.9,
+                        stm ^>=2.5.0,
+                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2 || ^>=1.14
 
 source-repository head
   type:                 git
