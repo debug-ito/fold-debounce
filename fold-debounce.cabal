@@ -9,7 +9,8 @@ description:            Fold multiple events that happen in a given period of ti
 category:               Control
 cabal-version:          2.0
 build-type:             Simple
-extra-source-files:     README.md, ChangeLog.md
+extra-source-files:     README.md
+extra-doc-files:        ChangeLog.md
 homepage:               https://github.com/debug-ito/fold-debounce
 bug-reports:            https://github.com/debug-ito/fold-debounce/issues
 

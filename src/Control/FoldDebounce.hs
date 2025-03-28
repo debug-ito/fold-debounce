@@ -86,6 +86,7 @@ import           Control.Concurrent.STM       (STM, TChan, TVar, atomically, new
                                                writeTVar)
 import           Control.Concurrent.STM.Delay (cancelDelay, newDelay, waitDelay)
 import           Data.Default                 (Default (def))
+import           Data.Maybe                   (fromMaybe)
 import           Data.Time                    (UTCTime, addUTCTime, diffUTCTime, getCurrentTime)
 
 -- | Mandatory parameters for 'new'.
@@ -95,9 +96,9 @@ data Args i o
         -- emitted. Note that this action is run in a different thread than
         -- the one calling 'send'.
         --
-        -- The callback should not throw any exception. In this case, the
+        -- The callback should not throw any exception. If it does, the
         -- 'Trigger' is abnormally closed, causing
-        -- 'UnexpectedClosedException' when 'close'.
+        -- 'UnexpectedClosedException' when 'close' is called.
         cb   :: o -> IO ()
         -- | The binary operation of left-fold. The left-fold is evaluated strictly.
       , fold :: o -> i -> o
@@ -139,7 +140,7 @@ instance Default (Opts i o) where
 -- the last event is at the head of the list.
 forStack :: ([i] -> IO ()) -- ^ 'cb' field.
          -> Args i [i]
-forStack mycb = Args { cb = mycb, fold = (flip (:)),  init = []}
+forStack mycb = Args { cb = mycb, fold = flip (:),  init = []}
 
 -- | 'Args' for monoids. Input events are appended to the tail.
 forMonoid :: Monoid i
@@ -151,7 +152,7 @@ forMonoid mycb = Args { cb = mycb, fold = mappend, init = mempty }
 -- folded, they still start the timer and activate the callback.
 forVoid :: IO () -- ^ 'cb' field.
         -> Args i ()
-forVoid mycb = Args { cb = const mycb, fold = (\_ _ -> ()), init = () }
+forVoid mycb = Args { cb = const mycb, fold = \_ _ -> (), init = () }
 
 type SendTime = UTCTime
 type ExpirationTime = UTCTime
@@ -211,7 +212,7 @@ send trig in_event = do
 close :: Trigger i o -> IO ()
 close trig = do
   atomically $ whenOpen $ writeTChan (trigInput trig) TIFinish
-  atomically $ whenOpen $ retry -- wait for closing
+  atomically $ whenOpen retry -- wait for closing
   where
     whenOpen stm_action = do
       state <- getThreadState trig
@@ -236,7 +237,7 @@ threadAction args opts in_chan = threadAction' Nothing Nothing where
     mgot <- waitInput in_chan mexpiration
     case mgot of
       Nothing -> fireCallback args mout_event >> threadAction' Nothing Nothing
-      Just (TIFinish) -> fireCallback args mout_event
+      Just TIFinish -> fireCallback args mout_event
       Just (TIEvent in_event send_time) ->
         let next_out = doFold args mout_event in_event
             next_expiration = nextExpiration opts mexpiration send_time
@@ -252,7 +253,7 @@ waitInput in_chan mexpiration = do
     Just 0 -> return Nothing
     Nothing -> atomically readInputSTM
     Just dur -> bracket (newDelay dur) cancelDelay $ \timer -> do
-      atomically $ readInputSTM <|> (const Nothing <$> waitDelay timer)
+      atomically $ readInputSTM <|> (Nothing <$ waitDelay timer)
   where
     readInputSTM = Just <$> readTChan in_chan
 
@@ -261,11 +262,11 @@ fireCallback _ Nothing             = return ()
 fireCallback args (Just out_event) = cb args out_event
 
 doFold :: Args i o -> Maybe o -> i -> o
-doFold args mcurrent in_event = let current = maybe (init args) id mcurrent
+doFold args mcurrent in_event = let current = fromMaybe (init args) mcurrent
                                 in fold args current in_event
 
 noNegative :: Int -> Int
-noNegative x = if x < 0 then 0 else x
+noNegative x = max x 0
 
 diffTimeUsec :: UTCTime -> UTCTime -> Int
 diffTimeUsec a b = noNegative $ round $ (* 1000000) $ toRational $ diffUTCTime a b
@@ -276,7 +277,7 @@ addTimeUsec t d = addUTCTime (fromRational (fromIntegral d % 1000000)) t
 nextExpiration :: Opts i o -> Maybe ExpirationTime -> SendTime -> ExpirationTime
 nextExpiration opts mlast_expiration send_time
   | alwaysResetTimer opts = fullDelayed
-  | otherwise = maybe fullDelayed id $ mlast_expiration
+  | otherwise = fromMaybe fullDelayed mlast_expiration
   where
     fullDelayed = (`addTimeUsec` delay opts) send_time
 
