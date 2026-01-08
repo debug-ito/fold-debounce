@@ -10,6 +10,7 @@ jobs:
         plan:
           - ghc: latest
             allow-fail: true
+          - ghc: '9.14.1'
           - ghc: '9.12.1'
           - ghc: '9.10.1'
           - ghc: '9.8.1'
