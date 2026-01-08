@@ -39,7 +39,7 @@ test-suite spec
                         fold-debounce,
                         hspec ^>=2.10.6 || ^>=2.11.9,
                         stm ^>=2.5.0,
-                        time ^>=1.9.3 || ^>=1.11.1 || ^>=1.12.2 || ^>=1.14
+                        time
 
 test-suite spec-threaded
   type:                 exitcode-stdio-1.0
