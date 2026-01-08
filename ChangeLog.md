@@ -1,5 +1,9 @@
 # Revision history for fold-debounce
 
+## 0.2.0.17  -- 2026-01-08
+
+* Confirm test with `ghc-9.14.1`.
+
 ## 0.2.0.16  -- 2025-03-28
 
 * Improve the code, haddock and .cabal file based on hlint and cabal check ( https://github.com/debug-ito/fold-debounce/pull/4 )
